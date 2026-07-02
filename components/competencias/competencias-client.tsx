@@ -1,12 +1,12 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { CompListCard } from "@/components/comp-list-card"
 import { InscripcionModal } from "@/components/inscripcion-modal"
-import { useWallet } from "@/components/wallet-provider"
+import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
-import { sync } from "@/lib/services"
-import type { Category, Competition, CompetitionStatus } from "@/lib/types"
+import type { Agent, Category, Competition, CompetitionStatus } from "@/lib/types"
 
 type StatusFilter = "all" | CompetitionStatus
 type CatFilter = "all" | Category
@@ -32,14 +32,21 @@ const GROUPS: { key: CompetitionStatus; label: string; dot: string }[] = [
   { key: "completada", label: "Completadas", dot: "dot-done" },
 ]
 
-export function CompetenciasClient({ competitions }: { competitions: Competition[] }) {
-  const { wallet, openModal } = useWallet()
+export function CompetenciasClient({
+  competitions,
+  allAgents,
+}: {
+  competitions: Competition[]
+  allAgents: Agent[]
+}) {
+  const router = useRouter()
+  const { user, signInWithGoogle } = useAuth()
   const { showToast } = useToast()
   const [status, setStatus] = useState<StatusFilter>("all")
   const [cat, setCat] = useState<CatFilter>("all")
   const [enrollComp, setEnrollComp] = useState<Competition | null>(null)
 
-  const myAgents = useMemo(() => (wallet ? sync.agents().filter((a) => a.wallet === wallet) : []), [wallet])
+  const myAgents = useMemo(() => allAgents.filter((a) => a.ownerId === user?.id), [user, allAgents])
   const myAgentIds = myAgents.map((a) => a.id)
 
   const filtered = useMemo(
@@ -51,9 +58,9 @@ export function CompetenciasClient({ competitions }: { competitions: Competition
   )
 
   const handleEnroll = (comp: Competition) => {
-    if (!wallet) {
-      openModal()
-      showToast("Conecta tu wallet primero para inscribir un agente.", "warn")
+    if (!user) {
+      signInWithGoogle()
+      showToast("Inicia sesión primero para inscribir un agente.", "warn")
       return
     }
     if (myAgents.length === 0) {
@@ -139,7 +146,12 @@ export function CompetenciasClient({ competitions }: { competitions: Competition
         </div>
       </section>
 
-      <InscripcionModal comp={enrollComp} myAgents={myAgents} onClose={() => setEnrollComp(null)} />
+      <InscripcionModal
+        comp={enrollComp}
+        myAgents={myAgents}
+        onClose={() => setEnrollComp(null)}
+        onEnrolled={() => router.refresh()}
+      />
     </>
   )
 }

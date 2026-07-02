@@ -52,21 +52,26 @@ const DEMO_AGENTS: DemoAgent[] = [
     evaluateTick: 10,
     completeTick: 16,
     evaluation: {
-      claridad: {
-        score: 38,
-        max: 40,
-        comment:
-          "Estructura impecable: factores identificados con precisión, tres opciones claramente diferenciadas y recomendación con argumentación cuantitativa.",
-      },
-      precision: {
-        score: 37,
-        max: 40,
+      accuracy: {
+        score: 95,
+        max: 100,
         comment:
           "Usa los KPIs del caso (runway, ARR, dilución, crecimiento) para fundamentar cada opción. No omite ningún dato relevante.",
       },
-      utilidad: {
-        score: 19,
-        max: 20,
+      reasoning: {
+        score: 93,
+        max: 100,
+        comment: "Argumentación cuantitativa sólida detrás de la recomendación final.",
+      },
+      structure: {
+        score: 95,
+        max: 100,
+        comment:
+          "Estructura impecable: factores identificados con precisión, tres opciones claramente diferenciadas.",
+      },
+      utility: {
+        score: 95,
+        max: 100,
         comment:
           "Recomendación accionable con condiciones específicas de negociación. Lista de próximos pasos incluida.",
       },
@@ -82,23 +87,26 @@ const DEMO_AGENTS: DemoAgent[] = [
     evaluateTick: 11,
     completeTick: 18,
     evaluation: {
-      claridad: {
-        score: 30,
-        max: 40,
-        comment:
-          "Análisis correcto pero estructura irregular — mezcla opciones y factores en el mismo bloque.",
-      },
-      precision: {
-        score: 31,
-        max: 40,
+      accuracy: {
+        score: 78,
+        max: 100,
         comment:
           "Cubre bien el dilema dilución vs. capital pero omite el impacto del crecimiento 20% en la valoración implícita.",
       },
-      utilidad: {
-        score: 17,
-        max: 20,
-        comment:
-          "Útil como análisis inicial. La recomendación final carece de concreción operacional.",
+      reasoning: {
+        score: 76,
+        max: 100,
+        comment: "Análisis correcto pero con saltos lógicos entre opciones y conclusión.",
+      },
+      structure: {
+        score: 74,
+        max: 100,
+        comment: "Estructura irregular — mezcla opciones y factores en el mismo bloque.",
+      },
+      utility: {
+        score: 82,
+        max: 100,
+        comment: "Útil como análisis inicial. La recomendación final carece de concreción operacional.",
       },
     },
   },
@@ -112,23 +120,27 @@ const DEMO_AGENTS: DemoAgent[] = [
     evaluateTick: 12,
     completeTick: 19,
     evaluation: {
-      claridad: {
-        score: 26,
-        max: 40,
-        comment:
-          "Los tres bloques están presentes pero la narrativa fuerza al lector a inferir la lógica entre secciones.",
-      },
-      precision: {
-        score: 28,
-        max: 40,
+      accuracy: {
+        score: 70,
+        max: 100,
         comment:
           "Datos correctos pero análisis superficial. No evalúa el impacto del runway de 6 meses en la posición negociadora.",
       },
-      utilidad: {
-        score: 17,
-        max: 20,
+      reasoning: {
+        score: 68,
+        max: 100,
+        comment: "Recomendación existe pero sin razonamiento suficiente para ser accionable con confianza.",
+      },
+      structure: {
+        score: 65,
+        max: 100,
         comment:
-          "Recomendación existe pero sin razonamiento suficiente para ser accionable con confianza.",
+          "Los tres bloques están presentes pero la narrativa fuerza al lector a inferir la lógica entre secciones.",
+      },
+      utility: {
+        score: 71,
+        max: 100,
+        comment: "Aplicable pero requiere reinterpretación antes de usarse como recomendación final.",
       },
     },
   },
@@ -142,23 +154,27 @@ const DEMO_AGENTS: DemoAgent[] = [
     evaluateTick: 13,
     completeTick: 20,
     evaluation: {
-      claridad: {
-        score: 22,
-        max: 40,
-        comment:
-          "Estructura válida pero telegráfica — los puntos carecen del desarrollo necesario para ser útiles.",
-      },
-      precision: {
-        score: 25,
-        max: 40,
+      accuracy: {
+        score: 63,
+        max: 100,
         comment:
           "Omite análisis del diferencial de dilución (10pp) y su efecto acumulado en el cap table a 5 años.",
       },
-      utilidad: {
-        score: 18,
-        max: 20,
+      reasoning: {
+        score: 60,
+        max: 100,
+        comment: "Recomendación directa aunque insuficientemente fundamentada en los datos del caso.",
+      },
+      structure: {
+        score: 58,
+        max: 100,
         comment:
-          "Tono apropiado. Recomendación directa aunque insuficientemente fundamentada en los datos del caso.",
+          "Estructura válida pero telegráfica — los puntos carecen del desarrollo necesario para ser útiles.",
+      },
+      utility: {
+        score: 65,
+        max: 100,
+        comment: "Tono apropiado, pero exige trabajo adicional para volverse accionable.",
       },
     },
   },
@@ -172,22 +188,26 @@ const DEMO_AGENTS: DemoAgent[] = [
     evaluateTick: 14,
     completeTick: 22,
     evaluation: {
-      claridad: {
-        score: 19,
-        max: 40,
-        comment:
-          "Los tres bloques pedidos están presentes pero mezclados. El formato dificulta la lectura rápida.",
-      },
-      precision: {
-        score: 22,
-        max: 40,
+      accuracy: {
+        score: 55,
+        max: 100,
         comment:
           "Análisis genérico que no aprovecha los datos específicos del escenario. Podría aplicar a cualquier startup.",
       },
-      utilidad: {
-        score: 17,
-        max: 20,
+      reasoning: {
+        score: 52,
+        max: 100,
         comment: "Recomendación final ambigua. Falta concreción operacional para ser accionable.",
+      },
+      structure: {
+        score: 50,
+        max: 100,
+        comment: "Los tres bloques pedidos están presentes pero mezclados. El formato dificulta la lectura rápida.",
+      },
+      utility: {
+        score: 58,
+        max: 100,
+        comment: "Utilidad limitada por la falta de especificidad respecto al caso.",
       },
     },
   },
@@ -248,6 +268,7 @@ function buildDemoComp(tick: number, startedAt: Date, endsAt: Date): Competition
     startedAt,
     endsAt,
     winnerId: isOver ? WINNER_ID : null,
+    winnerName: isOver ? "NeuralX" : null,
     winnerScore: isOver ? WINNER_SCORE : null,
     prompt: DEMO_PROMPT,
     results: [],

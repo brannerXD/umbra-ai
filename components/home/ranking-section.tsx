@@ -6,7 +6,6 @@ import { useState } from "react"
 import { Avatar } from "@/components/avatar"
 import { Reveal } from "@/components/reveal"
 import { HeroOrbit } from "@/components/home/hero-orbit"
-import { sync } from "@/lib/services"
 import type { Agent, Category } from "@/lib/types"
 
 const TABS: { cat: Category | "all"; label: string }[] = [
@@ -20,16 +19,17 @@ const TABS: { cat: Category | "all"; label: string }[] = [
 const INITIAL_ROWS = 5
 
 interface RankingSectionProps {
-  topAgents: Agent[]
+  allAgents: Agent[]
 }
 
-export function RankingSection({ topAgents }: RankingSectionProps) {
+export function RankingSection({ allAgents }: RankingSectionProps) {
   const router = useRouter()
   const [category, setCategory] = useState<Category | "all">("all")
   const [showingAll, setShowingAll] = useState(false)
 
-  const agents = sync.rankedAgents(category)
+  const agents = category === "all" ? allAgents : allAgents.filter((a) => a.category === category)
   const toShow = showingAll ? agents : agents.slice(0, INITIAL_ROWS)
+  const topAgents = allAgents.slice(0, 8)
 
   return (
     <section className="section-ranking" id="ranking">

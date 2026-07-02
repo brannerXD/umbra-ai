@@ -1,20 +1,57 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Avatar } from "@/components/avatar"
 import { ScoreCount } from "@/components/score-count"
 import { DetalleHeader } from "./detalle-header"
 import { PromptBox } from "./prompt-box"
 import { ResponseCard } from "./response-card"
 import { RubricBox } from "./rubric-box"
-import { sync } from "@/lib/services"
-import type { Competition } from "@/lib/types"
+import { InscripcionModal } from "@/components/inscripcion-modal"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/toast-provider"
+import { supabase } from "@/lib/supabase"
+import type { Agent, Competition } from "@/lib/types"
 
 const PTS_BY_POS = [10, 4, 2, 2, 2]
 
-export function DetalleClient({ comp }: { comp: Competition }) {
-  const winner = comp.winnerId ? sync.agentById(comp.winnerId) : null
+export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgents: Agent[] }) {
+  const router = useRouter()
+  const { user, signInWithGoogle } = useAuth()
+  const { showToast } = useToast()
+  const [starting, setStarting] = useState(false)
+  const [enrollOpen, setEnrollOpen] = useState(false)
+  const winner = comp.winnerId && comp.winnerName ? { id: comp.winnerId, name: comp.winnerName } : null
+
+  const myAgents = useMemo(() => allAgents.filter((a) => a.ownerId === user?.id), [allAgents, user])
+
+  function handleEnrollClick() {
+    if (!user) {
+      signInWithGoogle()
+      return
+    }
+    if (myAgents.length === 0) {
+      showToast("No tienes agentes registrados. Registra uno primero.", "warn")
+      return
+    }
+    setEnrollOpen(true)
+  }
+
+  async function startCompetition() {
+    setStarting(true)
+    const { data, error } = await supabase.functions.invoke("run-competition", {
+      body: { competitionId: comp.id },
+    })
+    setStarting(false)
+    if (error || !data?.ok) {
+      showToast(data?.message ?? "No se pudo iniciar la competencia.", "warn")
+      return
+    }
+    showToast("Competencia finalizada. Resultados actualizados.", "success")
+    router.refresh()
+  }
 
   const sortedResponses = useMemo(() => {
     const results = [...(comp.results || [])]
@@ -44,7 +81,7 @@ export function DetalleClient({ comp }: { comp: Competition }) {
         </div>
       </div>
 
-      <DetalleHeader comp={comp} />
+      <DetalleHeader comp={comp} onEnrollClick={handleEnrollClick} />
 
       {comp.status === "proxima" ? (
         <section className="prompt-hidden-section">
@@ -53,6 +90,16 @@ export function DetalleClient({ comp }: { comp: Competition }) {
               <span className="lock-dot" />
               <p>El prompt se revelará cuando comience la competencia.</p>
             </div>
+            {comp.agentsEnrolled > 0 && (
+              <button
+                className="btn-primary"
+                style={{ marginTop: 16 }}
+                disabled={starting}
+                onClick={startCompetition}
+              >
+                <span>{starting ? "Ejecutando competencia..." : "Iniciar competencia ahora →"}</span>
+              </button>
+            )}
           </div>
         </section>
       ) : (
@@ -187,6 +234,13 @@ export function DetalleClient({ comp }: { comp: Competition }) {
           </div>
         </section>
       )}
+
+      <InscripcionModal
+        comp={enrollOpen ? comp : null}
+        myAgents={myAgents}
+        onClose={() => setEnrollOpen(false)}
+        onEnrolled={() => router.refresh()}
+      />
     </main>
   )
 }

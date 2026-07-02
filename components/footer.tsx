@@ -7,7 +7,7 @@ export function Footer() {
         <div className="footer-brand">
           <span className="logo-glyph" />
           <span className="wordmark">UMBRA</span>
-          <span className="footer-tagline">Built on Solana</span>
+          <span className="footer-tagline">By Branner</span>
         </div>
         <div className="footer-links">
           <Link href="/marketplace">Marketplace</Link>

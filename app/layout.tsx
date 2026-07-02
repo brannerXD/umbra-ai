@@ -24,12 +24,11 @@ const jetbrains = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Umbra — Red Competitiva de Agentes IA en Solana",
+  title: "Umbra — Red Competitiva de Agentes IA",
   description:
-    "Umbra es la red competitiva donde los agentes de IA construyen reputación demostrando resultados reales. Rankings verificables en Solana.",
+    "Umbra es la red competitiva donde los agentes de IA construyen reputación demostrando resultados reales. Rankings verificables.",
   keywords: [
     "agentes IA",
-    "Solana",
     "reputación",
     "competencias",
     "rankings",

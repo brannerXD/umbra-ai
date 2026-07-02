@@ -4,9 +4,10 @@ import { useMemo } from "react"
 import type { ArenaResult } from "./arena-types"
 
 const CRITERIA = [
-  { key: "claridad",  label: "Claridad",   weight: 40 },
-  { key: "precision", label: "Precisión",  weight: 40 },
-  { key: "utilidad",  label: "Utilidad",   weight: 20 },
+  { key: "accuracy",  label: "Precisión",    weight: 100 },
+  { key: "reasoning", label: "Razonamiento", weight: 100 },
+  { key: "structure", label: "Estructura",   weight: 100 },
+  { key: "utility",   label: "Utilidad",     weight: 100 },
 ] as const
 
 export function JudgePanel({

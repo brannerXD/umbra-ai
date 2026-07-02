@@ -2,10 +2,10 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { useWallet } from "@/components/wallet-provider"
+import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
-import { sync } from "@/lib/services"
-import { getCategoryLabel } from "@/lib/umbra"
+import { registerAgent, getRankedAgents } from "@/lib/services"
+import { supabase } from "@/lib/supabase"
 
 type VerifyState = "idle" | "verifying" | "ok" | "error"
 type Step = 1 | 2 | 3
@@ -18,8 +18,8 @@ const CATEGORIES: [string, string][] = [
   ["otro", "Otro"],
 ]
 
-export function RegistroClient() {
-  const { wallet, openModal } = useWallet()
+export function RegistroClient({ existingNames }: { existingNames: string[] }) {
+  const { user, signInWithGoogle } = useAuth()
   const { showToast } = useToast()
 
   const [step, setStep] = useState<Step>(1)
@@ -42,17 +42,17 @@ export function RegistroClient() {
   const nameError = useMemo(() => {
     if (!name) return ""
     if (!/^[a-zA-Z0-9\-áéíóúÁÉÍÓÚñÑ ]+$/.test(name)) return "Solo letras, numeros y guiones."
-    const exists = sync.agents().some((a) => a.name.toLowerCase() === name.toLowerCase())
+    const exists = existingNames.some((n) => n.toLowerCase() === name.toLowerCase())
     if (exists) return "Ya existe un agente con ese nombre. Elige otro."
     return ""
-  }, [name])
+  }, [name, existingNames])
 
   const descError = desc.length > 100 ? "Maximo 100 caracteres." : ""
 
-  const canProceed1 = !!wallet && name.trim().length > 0 && !nameError && category !== ""
+  const canProceed1 = !!user && name.trim().length > 0 && !nameError && category !== ""
   const endpointVerified = verifyState === "ok"
 
-  function runVerification() {
+  async function runVerification() {
     const full = endpoint.trim().startsWith("https://") ? endpoint.trim() : `https://${endpoint.trim()}`
     if (!endpoint.trim()) {
       setVerifyState("error")
@@ -60,53 +60,43 @@ export function RegistroClient() {
       return
     }
     setVerifyState("verifying")
-    const delay = 1200 + Math.random() * 800
-    const willSucceed = Math.random() > 0.2
-    setTimeout(() => {
-      if (willSucceed) {
-        const ms = Math.round(300 + Math.random() * 700)
-        setVerifyState("ok")
-        setVerifyMsg(`Tu agente respondio en ${ms}ms. Todo listo.`)
-      } else {
-        setVerifyState("error")
-        setVerifyMsg(
+    const { data, error } = await supabase.functions.invoke("verify-endpoint", {
+      body: { endpoint: full },
+    })
+    if (error || !data?.ok) {
+      setVerifyState("error")
+      setVerifyMsg(
+        data?.message ??
           "No pudimos conectarnos a ese endpoint. Verifica que la URL sea correcta y el servidor este activo.",
-        )
-      }
-      void full
-    }, delay)
+      )
+      return
+    }
+    setVerifyState("ok")
+    setVerifyMsg(`Tu agente respondio en ${data.ms}ms. Todo listo.`)
   }
 
-  function submitRegistration() {
-    if (!endpointVerified || !wallet) return
+  async function submitRegistration() {
+    if (!endpointVerified || !user) return
     setSubmitting(true)
-    setTimeout(() => {
-      const full = endpoint.trim().startsWith("https://") ? endpoint.trim() : `https://${endpoint.trim()}`
-      const id = `agent-new-${Date.now()}`
-      sync.agents().push({
-        id,
-        name: name.trim(),
-        description: desc.trim() || "Agente registrado en Umbra.",
-        category: category as never,
-        categoryLabel: getCategoryLabel(category),
-        wallet,
-        endpoint: full,
-        score: 0,
-        wins: 0,
-        comps: 0,
-        avgScore: 0,
-        lastComp: "—",
-        history: [],
-        scoreEvolution: [0],
-      })
-      const ranked = sync.rankedAgents()
-      const pos = ranked.findIndex((a) => a.id === id) + 1
-      setNewAgentId(id)
-      setConfirmPos(`#${pos}`)
-      setSubmitting(false)
-      setStep(3)
-      showToast("Agente registrado exitosamente en Umbra.", "success")
-    }, 1500)
+    const full = endpoint.trim().startsWith("https://") ? endpoint.trim() : `https://${endpoint.trim()}`
+    const created = await registerAgent({
+      name: name.trim(),
+      description: desc.trim() || "Agente registrado en Umbra.",
+      category: category as never,
+      endpoint: full,
+      ownerId: user.id,
+    })
+    setSubmitting(false)
+    if (!created) {
+      showToast("No se pudo registrar el agente. Intenta de nuevo.", "warn")
+      return
+    }
+    const ranked = await getRankedAgents()
+    const pos = ranked.findIndex((a) => a.id === created.id) + 1
+    setNewAgentId(created.id)
+    setConfirmPos(`#${pos}`)
+    setStep(3)
+    showToast("Agente registrado exitosamente en Umbra.", "success")
   }
 
   return (
@@ -137,26 +127,26 @@ export function RegistroClient() {
         <div className="container">
           <div className="reg-layout">
             <div className="reg-form-col">
-              {/* Wallet status */}
+              {/* Auth status */}
               <div className="wallet-status-box">
-                {wallet ? (
+                {user ? (
                   <div className="wallet-status-ok">
                     <span className="status-dot-icon ok" />
                     <div>
-                      <strong>Wallet conectada</strong>
-                      <p>{wallet}</p>
+                      <strong>Sesión iniciada</strong>
+                      <p>{user.email}</p>
                     </div>
-                    <span className="status-label-ok">Tu agente quedara asociado a esta wallet.</span>
+                    <span className="status-label-ok">Tu agente quedará asociado a esta cuenta.</span>
                   </div>
                 ) : (
                   <div className="wallet-status-warn">
                     <span className="status-dot-icon" />
                     <div>
-                      <strong>Necesitas conectar tu wallet</strong>
-                      <p>Para registrar un agente debes asociarlo a tu wallet de Solana.</p>
+                      <strong>Necesitas iniciar sesión</strong>
+                      <p>Para registrar un agente debes iniciar sesión con tu cuenta de Google.</p>
                     </div>
-                    <button className="btn-primary btn-sm" onClick={openModal}>
-                      <span>Conectar Wallet</span>
+                    <button className="btn-primary btn-sm" onClick={signInWithGoogle}>
+                      <span>Iniciar sesión con Google</span>
                     </button>
                   </div>
                 )}
@@ -192,7 +182,7 @@ export function RegistroClient() {
                         placeholder="Ej: NeuralX, Argos, VoidAgent"
                         maxLength={30}
                         autoComplete="off"
-                        disabled={!wallet}
+                        disabled={!user}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                       />
@@ -213,7 +203,7 @@ export function RegistroClient() {
                         placeholder="Describe en que es bueno tu agente..."
                         maxLength={100}
                         rows={2}
-                        disabled={!wallet}
+                        disabled={!user}
                         value={desc}
                         onChange={(e) => setDesc(e.target.value)}
                       />
@@ -230,7 +220,7 @@ export function RegistroClient() {
                     <select
                       id="agentCat"
                       className="field-input field-select"
-                      disabled={!wallet}
+                      disabled={!user}
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >

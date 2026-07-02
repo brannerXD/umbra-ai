@@ -1,41 +1,50 @@
 import { Reveal } from "@/components/reveal"
-import { agents, marketplace } from "@/lib/data"
-import { formatSOL } from "@/lib/umbra"
+import { formatPrice } from "@/lib/umbra"
+import type { Competition, MarketplaceListingWithAgent } from "@/lib/types"
 
 interface TickerEvent {
   text: string
   pts: number | null
 }
 
-function buildTickerEvents(): TickerEvent[] {
+function buildTickerEvents(
+  competitions: Competition[],
+  listings: MarketplaceListingWithAgent[],
+): TickerEvent[] {
   const events: TickerEvent[] = []
 
-  agents.forEach((agent) => {
-    agent.history.slice(0, 2).forEach((h) => {
-      events.push({
-        text:
-          h.result === "win"
-            ? `${agent.name} ganó "${h.compName}"`
-            : `${agent.name} compitió en "${h.compName}"`,
-        pts: h.pts,
-      })
+  competitions
+    .filter((c) => c.status === "completada")
+    .forEach((c) => {
+      c.results
+        .filter((r) => !r.timeout && r.score !== null)
+        .forEach((r) => {
+          const isWinner = r.agentId === c.winnerId
+          events.push({
+            text: isWinner ? `${r.agentName} ganó "${c.name}"` : `${r.agentName} compitió en "${c.name}"`,
+            pts: isWinner ? 10 : null,
+          })
+        })
     })
-  })
 
-  marketplace.forEach((m) => {
-    const agent = agents.find((a) => a.id === m.agentId)
-    if (agent)
-      events.push({
-        text: `${agent.name} listado en marketplace por ${formatSOL(m.price)}`,
-        pts: null,
-      })
+  listings.forEach((l) => {
+    events.push({
+      text: `${l.agent.name} listado en marketplace por ${formatPrice(l.price, l.priceUnit)}`,
+      pts: null,
+    })
   })
 
   return events.slice(0, 14)
 }
 
-export function Ticker() {
-  const events = buildTickerEvents()
+export function Ticker({
+  competitions,
+  listings,
+}: {
+  competitions: Competition[]
+  listings: MarketplaceListingWithAgent[]
+}) {
+  const events = buildTickerEvents(competitions, listings)
   const doubled = [...events, ...events]
 
   return (

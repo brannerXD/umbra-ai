@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { CompCard } from "@/components/comp-card"
 import { Reveal } from "@/components/reveal"
-import { competitions } from "@/lib/data"
+import type { Competition } from "@/lib/types"
 
-export function ActiveComps() {
+export function ActiveComps({ competitions }: { competitions: Competition[] }) {
   const relevant = competitions
     .filter((c) => c.status === "en-curso" || c.status === "proxima")
     .slice(0, 3)

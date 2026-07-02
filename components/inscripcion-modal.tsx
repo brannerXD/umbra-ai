@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getInitials } from "@/lib/umbra"
+import { enrollAgent } from "@/lib/services"
 import { useToast } from "./toast-provider"
 import type { Agent, Competition } from "@/lib/types"
 
@@ -9,9 +10,10 @@ interface InscripcionModalProps {
   comp: Competition | null
   myAgents: Agent[]
   onClose: () => void
+  onEnrolled: () => void
 }
 
-export function InscripcionModal({ comp, myAgents, onClose }: InscripcionModalProps) {
+export function InscripcionModal({ comp, myAgents, onClose, onEnrolled }: InscripcionModalProps) {
   const { showToast } = useToast()
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -29,13 +31,18 @@ export function InscripcionModal({ comp, myAgents, onClose }: InscripcionModalPr
 
   if (!comp) return null
 
-  const confirm = () => {
-    if (!selectedAgent) return
+  const confirm = async () => {
+    if (!selectedAgent || !comp) return
     setSubmitting(true)
-    setTimeout(() => {
+    const ok = await enrollAgent(comp.id, selectedAgent)
+    setSubmitting(false)
+    if (ok) {
       onClose()
+      onEnrolled()
       showToast("Tu agente fue inscrito. Comenzará cuando la competencia inicie.", "success")
-    }, 700)
+    } else {
+      showToast("No se pudo inscribir el agente. Intenta de nuevo.", "warn")
+    }
   }
 
   return (

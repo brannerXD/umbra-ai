@@ -365,6 +365,34 @@ body::before {
 .btn-wallet.connected { border-color: var(--border-2); color: var(--text-2); }
 .btn-wallet.connected:hover { background: transparent; border-color: var(--text); color: var(--text); }
 
+.auth-menu-wrap { position: relative; }
+.auth-avatar { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+.auth-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 6px;
+  min-width: 160px;
+  z-index: 40;
+}
+.auth-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.auth-menu-item:hover { background: var(--border-2); color: var(--text); }
+
 /* STATUS BADGES */
 .status-badge {
   display: inline-flex;

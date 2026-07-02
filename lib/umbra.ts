@@ -101,11 +101,11 @@ export function getPositionLabel(pos: number): string {
   return `${pos}to lugar`
 }
 
-export function shortenWallet(addr: string | null): string {
-  if (!addr) return ""
-  return addr.slice(0, 4) + "···" + addr.slice(-4)
-}
-
-export function formatSOL(amount: number): string {
-  return `${amount.toFixed(2)} SOL`
+export function formatPrice(amount: number, currency: string = "USD"): string {
+  if (currency === "COP") {
+    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
+      amount,
+    )
+  }
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
 }
