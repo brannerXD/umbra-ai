@@ -5,8 +5,9 @@
 // ========================================
 
 import { supabase } from "./supabase"
-import { getCategoryLabel } from "./umbra"
+import { formatPrice, getCategoryLabel } from "./umbra"
 import type {
+  ActivityEvent,
   Agent,
   AgentHistoryEntry,
   Category,
@@ -14,6 +15,7 @@ import type {
   CompetitionEvaluation,
   CompetitionResult,
   MarketplaceListingWithAgent,
+  UserProfile,
 } from "./types"
 
 // ── MAPEOS DB → UI ───────────────────────
@@ -27,6 +29,7 @@ interface AgentRow {
   owner_id: string | null
   endpoint: string | null
   verified: boolean | null
+  archived: boolean | null
   score: number | null
   wins: number | null
   comps_count: number | null
@@ -45,6 +48,7 @@ function mapAgent(row: AgentRow, history: AgentHistoryEntry[] = []): Agent {
     ownerId: row.owner_id,
     endpoint: row.endpoint ?? "",
     verified: row.verified ?? false,
+    archived: row.archived ?? false,
     score: row.score ?? 0,
     wins: row.wins ?? 0,
     comps: row.comps_count ?? 0,
@@ -148,7 +152,11 @@ async function fetchResultsForCompetition(competitionId: string, status: string)
 // ── AGENTES ──────────────────────────────
 
 export async function listAgents(): Promise<Agent[]> {
-  const { data, error } = await supabase.from("agents").select("*").order("score", { ascending: false })
+  const { data, error } = await supabase
+    .from("agents")
+    .select("*")
+    .eq("archived", false)
+    .order("score", { ascending: false })
   if (error || !data) return []
   return data.map((row) => mapAgent(row as AgentRow))
 }
@@ -216,7 +224,7 @@ export async function getAgentById(id: string): Promise<Agent | null> {
 }
 
 export async function getRankedAgents(category: Category | "all" = "all"): Promise<Agent[]> {
-  let query = supabase.from("agents").select("*").order("score", { ascending: false })
+  let query = supabase.from("agents").select("*").eq("archived", false).order("score", { ascending: false })
   if (category !== "all") query = query.eq("category", category)
   const { data, error } = await query
   if (error || !data) return []
@@ -232,6 +240,11 @@ export async function getAgentsByOwner(ownerId: string | null): Promise<Agent[]>
 
 export async function updateAgentDescription(agentId: string, description: string): Promise<boolean> {
   const { error } = await supabase.from("agents").update({ description }).eq("id", agentId)
+  return !error
+}
+
+export async function archiveAgent(agentId: string): Promise<boolean> {
+  const { error } = await supabase.from("agents").update({ archived: true }).eq("id", agentId)
   return !error
 }
 
@@ -387,4 +400,110 @@ export async function createListing(input: {
     return false
   }
   return true
+}
+
+// ── PERFIL ────────────────────────────────
+
+interface ProfileRow {
+  id: string
+  email: string | null
+  username: string | null
+  avatar_url: string | null
+  bio: string | null
+  username_updated_at: string
+}
+
+function mapProfile(row: ProfileRow): UserProfile {
+  return {
+    id: row.id,
+    email: row.email,
+    username: row.username ?? "Usuario",
+    avatarUrl: row.avatar_url,
+    bio: row.bio ?? "",
+    usernameUpdatedAt: new Date(row.username_updated_at),
+  }
+}
+
+export async function getUserProfile(id: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle()
+  if (error || !data) return null
+  return mapProfile(data as ProfileRow)
+}
+
+export async function updateProfile(
+  id: string,
+  input: { username?: string; bio?: string },
+): Promise<{ ok: boolean; message?: string }> {
+  const { error } = await supabase.from("profiles").update(input).eq("id", id)
+  if (error) {
+    if (error.message.includes("cada 60 dias")) {
+      return { ok: false, message: "Solo puedes cambiar tu apodo cada 60 días." }
+    }
+    return { ok: false, message: "No se pudo actualizar el perfil." }
+  }
+  return { ok: true }
+}
+
+// ── ACTIVIDAD ─────────────────────────────
+
+export async function getActivityForUser(ownerId: string): Promise<ActivityEvent[]> {
+  const { data: agentRows } = await supabase
+    .from("agents")
+    .select("id, name, created_at")
+    .eq("owner_id", ownerId)
+
+  const agents = agentRows ?? []
+  if (agents.length === 0) return []
+
+  const agentIds = agents.map((a) => a.id)
+  const nameById = new Map(agents.map((a) => [a.id, a.name]))
+
+  const events: ActivityEvent[] = agents.map((a) => ({
+    type: "registered",
+    date: new Date(a.created_at),
+    title: `Registraste el agente ${a.name}`,
+    detail: "",
+    agentId: a.id,
+  }))
+
+  const { data: entries } = await supabase
+    .from("competition_entries")
+    .select("agent_id, final_score, created_at, competitions(id, title, winner_id)")
+    .in("agent_id", agentIds)
+    .not("final_score", "is", null)
+
+  interface EntryActivityRow {
+    agent_id: string
+    final_score: number
+    created_at: string
+    competitions: { id: string; title: string; winner_id: string | null } | null
+  }
+  ;(entries as unknown as EntryActivityRow[] | null)?.forEach((e) => {
+    const won = e.competitions?.winner_id === e.agent_id
+    events.push({
+      type: "competed",
+      date: new Date(e.created_at),
+      title: `${nameById.get(e.agent_id)} ${won ? "ganó" : "compitió en"} "${e.competitions?.title ?? "—"}"`,
+      detail: `Score: ${e.final_score}/100`,
+      agentId: e.agent_id,
+      competitionId: e.competitions?.id,
+    })
+  })
+
+  const { data: listings } = await supabase
+    .from("marketplace_listings")
+    .select("agent_id, price, price_unit, listed_at")
+    .in("agent_id", agentIds)
+
+  listings?.forEach((l) => {
+    events.push({
+      type: "listed",
+      date: new Date(l.listed_at),
+      title: `${nameById.get(l.agent_id)} fue listado en el marketplace`,
+      detail: formatPrice(l.price, l.price_unit),
+      agentId: l.agent_id,
+    })
+  })
+
+  return events.sort((a, b) => b.date.getTime() - a.date.getTime())
 }

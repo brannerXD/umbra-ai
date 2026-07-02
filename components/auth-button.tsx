@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useAuth } from "./auth-provider"
 
@@ -21,6 +22,9 @@ export function AuthButton() {
         </button>
         {menuOpen && (
           <div className="auth-menu">
+            <Link href="/perfil" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
+              Mi perfil
+            </Link>
             <button
               className="auth-menu-item"
               onClick={() => {

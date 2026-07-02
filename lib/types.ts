@@ -26,6 +26,7 @@ export interface Agent {
   ownerId: string | null
   endpoint: string
   verified: boolean
+  archived: boolean
   score: number
   wins: number
   comps: number
@@ -89,4 +90,24 @@ export interface MarketplaceListing {
 
 export interface MarketplaceListingWithAgent extends MarketplaceListing {
   agent: Agent
+}
+
+export interface UserProfile {
+  id: string
+  email: string | null
+  username: string
+  avatarUrl: string | null
+  bio: string
+  usernameUpdatedAt: Date
+}
+
+export type ActivityEventType = "registered" | "competed" | "listed"
+
+export interface ActivityEvent {
+  type: ActivityEventType
+  date: Date
+  title: string
+  detail: string
+  agentId: string
+  competitionId?: string
 }

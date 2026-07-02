@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { CountUp } from "@/components/count-up"
 import { ScoreChart } from "./score-chart"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
 import { formatPrice, formatTime } from "@/lib/umbra"
-import { createListing, updateAgentDescription } from "@/lib/services"
+import { archiveAgent, createListing, updateAgentDescription } from "@/lib/services"
 import type { Agent, MarketplaceListingWithAgent } from "@/lib/types"
 
 const HIST_LIMIT = 5
@@ -23,6 +24,7 @@ export function AgenteClient({
   rankPosition: number
   listing: MarketplaceListingWithAgent | null
 }) {
+  const router = useRouter()
   const { user } = useAuth()
   const { showToast } = useToast()
 
@@ -34,12 +36,14 @@ export function AgenteClient({
   // Modales
   const [editOpen, setEditOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
   const [priceDraft, setPriceDraft] = useState("")
   const [priceUnit, setPriceUnit] = useState<"USD" | "COP">("USD")
   const [licenseDraft, setLicenseDraft] = useState("Licencia exclusiva")
   const [publishing, setPublishing] = useState(false)
   const [savingDesc, setSavingDesc] = useState(false)
+  const [archiving, setArchiving] = useState(false)
 
   const isOwner = !!user && initialAgent.ownerId === user.id
 
@@ -103,6 +107,19 @@ export function AgenteClient({
     })
     setListOpen(false)
     showToast(`${initialAgent.name} fue listado en el marketplace por ${formatPrice(price, priceUnit)}.`, "success")
+  }
+
+  async function confirmArchiveAgent() {
+    setArchiving(true)
+    const ok = await archiveAgent(initialAgent.id)
+    setArchiving(false)
+    if (!ok) {
+      showToast("No se pudo archivar el agente.", "warn")
+      return
+    }
+    showToast(`${initialAgent.name} fue archivado.`, "success")
+    setArchiveOpen(false)
+    router.refresh()
   }
 
   return (
@@ -236,6 +253,11 @@ export function AgenteClient({
               {!listing && (
                 <button className="btn-ghost btn-sm" onClick={() => setListOpen(true)}>
                   Listar en marketplace
+                </button>
+              )}
+              {!initialAgent.archived && (
+                <button className="btn-ghost btn-sm" onClick={() => setArchiveOpen(true)}>
+                  Archivar agente
                 </button>
               )}
             </div>
@@ -400,6 +422,30 @@ export function AgenteClient({
               </button>
               <button className="btn-primary" disabled={publishing} onClick={publishListing}>
                 <span>{publishing ? "Publicando..." : "Publicar listado"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal archivar agente */}
+      {archiveOpen && (
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setArchiveOpen(false)}>
+          <div className="modal-box">
+            <button className="modal-close" aria-label="Cerrar" onClick={() => setArchiveOpen(false)}>
+              ✕
+            </button>
+            <h3 className="modal-title">Archivar {initialAgent.name}</h3>
+            <p className="modal-sub">
+              Desaparecerá del ranking público y se quitará del marketplace si estaba listado. Su historial de
+              competencias se conserva. No se borra nada de forma permanente.
+            </p>
+            <div className="modal-actions">
+              <button className="btn-ghost" onClick={() => setArchiveOpen(false)}>
+                Cancelar
+              </button>
+              <button className="btn-primary" disabled={archiving} onClick={confirmArchiveAgent}>
+                <span>{archiving ? "Archivando..." : "Archivar agente"}</span>
               </button>
             </div>
           </div>
