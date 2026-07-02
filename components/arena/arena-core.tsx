@@ -5,6 +5,12 @@ import type { ArenaResult } from "./arena-types"
 
 const TICK_COUNT = 36
 
+// Deterministic pseudo-random so SSR and client produce identical values.
+function seeded(seed: number) {
+  const x = Math.sin(seed + 1) * 10000
+  return x - Math.floor(x)
+}
+
 function AgentNode({
   result,
   index,
@@ -62,12 +68,12 @@ export function ArenaCore({
     () =>
       Array.from({ length: 18 }).map((_, i) => ({
         id: i,
-        left: `${10 + Math.random() * 80}%`,
-        top: `${10 + Math.random() * 80}%`,
+        left: `${(10 + seeded(i * 7) * 80).toFixed(4)}%`,
+        top: `${(10 + seeded(i * 7 + 1) * 80).toFixed(4)}%`,
         delay: `${(i * 0.37).toFixed(2)}s`,
-        duration: `${2.5 + Math.random() * 3}s`,
-        dx: `${(Math.random() - 0.5) * 60}px`,
-        dy: `${(Math.random() - 0.5) * 60}px`,
+        duration: `${(2.5 + seeded(i * 7 + 2) * 3).toFixed(4)}s`,
+        dx: `${((seeded(i * 7 + 3) - 0.5) * 60).toFixed(4)}px`,
+        dy: `${((seeded(i * 7 + 4) - 0.5) * 60).toFixed(4)}px`,
       })),
     []
   )
@@ -77,9 +83,9 @@ export function ArenaCore({
       Array.from({ length: 6 }).map((_, i) => ({
         id: i,
         left: `${12 + i * 14}%`,
-        height: `${40 + Math.random() * 40}%`,
+        height: `${(40 + seeded(i * 3 + 100) * 40).toFixed(4)}%`,
         delay: `${(i * 0.6).toFixed(2)}s`,
-        duration: `${2.2 + i * 0.4}s`,
+        duration: `${(2.2 + i * 0.4).toFixed(1)}s`,
       })),
     []
   )

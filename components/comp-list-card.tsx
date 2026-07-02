@@ -31,7 +31,7 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
   const winner = comp.winnerId ? sync.agentById(comp.winnerId) : null
 
   const goDetail = () =>
-    router.push(comp.status === "en-curso" ? `/arena?id=${comp.id}` : `/detalle?id=${comp.id}`)
+    router.push(`/detalle?id=${comp.id}`)
 
   return (
     <div
@@ -78,7 +78,7 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
                 goDetail()
               }}
             >
-              Observar en vivo →
+              Ver en vivo →
             </button>
           ) : (
             <button
