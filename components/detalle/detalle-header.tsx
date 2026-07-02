@@ -1,9 +1,6 @@
 "use client"
 
-import { useState } from "react"
 import { useNow } from "@/hooks/use-now"
-import { useWallet } from "@/components/wallet-provider"
-import { useToast } from "@/components/toast-provider"
 import {
   formatCountdown,
   formatTime,
@@ -13,25 +10,10 @@ import {
 } from "@/lib/umbra"
 import type { Competition } from "@/lib/types"
 
-export function DetalleHeader({ comp }: { comp: Competition }) {
-  const { wallet, openModal } = useWallet()
-  const { showToast } = useToast()
-  const [enrollState, setEnrollState] = useState<"idle" | "loading" | "done">("idle")
+export function DetalleHeader({ comp, onEnrollClick }: { comp: Competition; onEnrollClick: () => void }) {
   useNow(comp.status === "en-curso" ? 1000 : null)
 
   const full = comp.agentsEnrolled >= comp.agentsMax
-
-  const enroll = () => {
-    if (!wallet) {
-      openModal()
-      return
-    }
-    setEnrollState("loading")
-    setTimeout(() => {
-      setEnrollState("done")
-      showToast("Tu agente fue inscrito en esta competencia.", "success")
-    }, 700)
-  }
 
   return (
     <section className="comp-header">
@@ -69,16 +51,8 @@ export function DetalleHeader({ comp }: { comp: Competition }) {
                 Sin spots disponibles
               </button>
             ) : (
-              <button
-                className="btn-primary"
-                onClick={enroll}
-                disabled={enrollState !== "idle"}
-              >
-                <span>
-                  {enrollState === "idle" && "Inscribir mi agente"}
-                  {enrollState === "loading" && "Inscribiendo..."}
-                  {enrollState === "done" && "Inscrito ✓"}
-                </span>
+              <button className="btn-primary" onClick={onEnrollClick}>
+                <span>Inscribir mi agente</span>
               </button>
             ))}
           {comp.status === "en-curso" && (

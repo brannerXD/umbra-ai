@@ -4,9 +4,9 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Reveal } from "@/components/reveal"
 import { Avatar } from "@/components/avatar"
-import { useWallet } from "@/components/wallet-provider"
+import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
-import { getCategoryLabel, formatSOL, shortenWallet } from "@/lib/umbra"
+import { getCategoryLabel, formatPrice } from "@/lib/umbra"
 import type { MarketplaceListingWithAgent, Agent } from "@/lib/types"
 
 type SortKey = "score-desc" | "price-asc" | "price-desc" | "recent"
@@ -26,7 +26,7 @@ export function MarketplaceClient({
   listings: MarketplaceListingWithAgent[]
   ranking: Agent[]
 }) {
-  const { wallet, openModal } = useWallet()
+  const { user, signInWithGoogle } = useAuth()
   const { showToast } = useToast()
 
   const [listings, setListings] = useState(initialListings)
@@ -57,9 +57,9 @@ export function MarketplaceClient({
   }, [listings, filter, sort])
 
   function openPurchase(listing: MarketplaceListingWithAgent) {
-    if (!wallet) {
-      openModal()
-      showToast("Conecta tu wallet primero para adquirir un agente.", "warn")
+    if (!user) {
+      signInWithGoogle()
+      showToast("Inicia sesión primero para adquirir un agente.", "warn")
       return
     }
     setSelected(listing)
@@ -73,11 +73,9 @@ export function MarketplaceClient({
       setListings((prev) => prev.filter((l) => l.agentId !== selected.agentId))
       setSelected(null)
       setProcessing(false)
-      showToast(`Adquiriste ${name}. La transacción fue confirmada on-chain.`, "success")
+      showToast(`Adquiriste ${name}. (Simulado — el pago real aún no está implementado.)`, "success")
     }, 1400)
   }
-
-  const networkFee = 0.000005
 
   return (
     <main>
@@ -96,11 +94,11 @@ export function MarketplaceClient({
             <span className="market-stat-label">agentes listados</span>
           </div>
           <div className="market-stat">
-            <span className="market-stat-num">{formatSOL(stats.volume)}</span>
+            <span className="market-stat-num">{formatPrice(stats.volume)}</span>
             <span className="market-stat-label">volumen total</span>
           </div>
           <div className="market-stat">
-            <span className="market-stat-num">{formatSOL(stats.avg)}</span>
+            <span className="market-stat-num">{formatPrice(stats.avg)}</span>
             <span className="market-stat-label">precio promedio</span>
           </div>
         </div>
@@ -181,7 +179,7 @@ export function MarketplaceClient({
 
                     <div className="market-card-footer">
                       <div className="market-card-price">
-                        <span className="market-card-price-val">{formatSOL(listing.price)}</span>
+                        <span className="market-card-price-val">{formatPrice(listing.price, listing.priceUnit)}</span>
                         <span className="market-card-price-label">precio</span>
                       </div>
                       <button className="btn-primary btn-sm" onClick={() => openPurchase(listing)}>
@@ -226,15 +224,14 @@ export function MarketplaceClient({
             <p className="modal-sub">{selected.agent.name} — {selected.licenseType}</p>
 
             <div className="purchase-summary">
-              <div className="purchase-row"><span>Precio del agente</span><span>{formatSOL(selected.price)}</span></div>
-              <div className="purchase-row"><span>Comisión de red Solana</span><span>{networkFee.toFixed(6)} SOL</span></div>
-              <div className="purchase-row"><span>Vendedor</span><span>{shortenWallet(selected.seller)}</span></div>
-              <div className="purchase-row total"><span>Total</span><span>{(selected.price + networkFee).toFixed(6)} SOL</span></div>
+              <div className="purchase-row"><span>Precio del agente</span><span>{formatPrice(selected.price, selected.priceUnit)}</span></div>
+              <div className="purchase-row"><span>Vendedor</span><span>{selected.sellerName}</span></div>
+              <div className="purchase-row total"><span>Total</span><span>{formatPrice(selected.price, selected.priceUnit)}</span></div>
             </div>
 
             <div className="modal-warning">
               <span className="warn-icon">!</span>
-              Esta transacción se procesará on-chain en Solana y no se puede deshacer.
+              Esta es una simulación de compra — el procesamiento de pago real aún no está implementado.
             </div>
 
             <div className="modal-actions">

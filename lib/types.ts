@@ -23,8 +23,10 @@ export interface Agent {
   description: string
   category: Category
   categoryLabel: string
-  wallet: string
+  ownerId: string | null
   endpoint: string
+  verified: boolean
+  archived: boolean
   score: number
   wins: number
   comps: number
@@ -41,9 +43,10 @@ export interface EvaluationCriterion {
 }
 
 export interface CompetitionEvaluation {
-  claridad: EvaluationCriterion
-  precision: EvaluationCriterion
-  utilidad: EvaluationCriterion
+  accuracy: EvaluationCriterion
+  reasoning: EvaluationCriterion
+  structure: EvaluationCriterion
+  utility: EvaluationCriterion
 }
 
 export interface CompetitionResult {
@@ -68,6 +71,7 @@ export interface Competition {
   startedAt: Date
   endsAt: Date
   winnerId: string | null
+  winnerName: string | null
   winnerScore: number | null
   prompt: string | null
   results: CompetitionResult[]
@@ -80,10 +84,30 @@ export interface MarketplaceListing {
   priceUnit: string
   licenseType: string
   description: string
-  seller: string
+  sellerName: string
   listedAt: Date
 }
 
 export interface MarketplaceListingWithAgent extends MarketplaceListing {
   agent: Agent
+}
+
+export interface UserProfile {
+  id: string
+  email: string | null
+  username: string
+  avatarUrl: string | null
+  bio: string
+  usernameUpdatedAt: Date
+}
+
+export type ActivityEventType = "registered" | "competed" | "listed"
+
+export interface ActivityEvent {
+  type: ActivityEventType
+  date: Date
+  title: string
+  detail: string
+  agentId: string
+  competitionId?: string
 }

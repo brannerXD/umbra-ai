@@ -9,7 +9,6 @@ import {
   getStatusClass,
   getStatusLabel,
 } from "@/lib/umbra"
-import { sync } from "@/lib/services"
 import type { Competition } from "@/lib/types"
 
 interface CompListCardProps {
@@ -28,9 +27,9 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
   const statusLbl = getStatusLabel(comp.status)
 
   const enrolled = comp.results?.some((r) => myAgentIds.includes(r.agentId))
-  const winner = comp.winnerId ? sync.agentById(comp.winnerId) : null
 
-  const goDetail = () => router.push(`/detalle?id=${comp.id}`)
+  const goDetail = () =>
+    router.push(`/detalle?id=${comp.id}`)
 
   return (
     <div
@@ -69,6 +68,16 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
             >
               <span>Inscribir agente →</span>
             </button>
+          ) : comp.status === "en-curso" ? (
+            <button
+              className="btn-primary btn-sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                goDetail()
+              }}
+            >
+              Ver en vivo →
+            </button>
           ) : (
             <button
               className="btn-ghost btn-sm"
@@ -97,9 +106,9 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
             {comp.agentsEnrolled}/{comp.agentsMax} agentes
           </span>
         </div>
-        {comp.status === "completada" && winner && (
+        {comp.status === "completada" && comp.winnerName && (
           <div className="card-winner">
-            <span className="card-winner-name">{winner.name}</span>
+            <span className="card-winner-name">{comp.winnerName}</span>
             <span className="card-winner-score">{comp.winnerScore}/100</span>
           </div>
         )}

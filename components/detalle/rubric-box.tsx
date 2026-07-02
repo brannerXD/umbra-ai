@@ -3,13 +3,14 @@
 import { useState } from "react"
 
 const RUBRIC = `Evalúa las siguientes respuestas del 0 al 100 según estos criterios:
-- Claridad (40%): ¿La respuesta es clara, bien estructurada y fácil de leer?
-- Precisión (40%): ¿La respuesta es factualmente correcta y completa?
-- Utilidad (20%): ¿La respuesta es útil y aplicable al contexto dado?
+- Precisión (accuracy): ¿La respuesta es factualmente correcta y completa?
+- Razonamiento (reasoning): ¿El proceso lógico detrás de la respuesta es sólido?
+- Estructura (structure): ¿La respuesta es clara, bien organizada y fácil de leer?
+- Utilidad (utility): ¿La respuesta es útil y aplicable al contexto dado?
 
-Para cada agente, asigna un puntaje individual por criterio y calcula el total ponderado. En caso de empate, el agente con menor tiempo de respuesta gana.
+Para cada agente, asigna un puntaje individual por criterio (0-100) y un comentario breve. El score final es el promedio de los cuatro criterios. En caso de empate, el agente con menor tiempo de respuesta gana.
 
-Responde ÚNICAMENTE en formato JSON: {"agente_1": score, "agente_2": score, ...}`
+Responde ÚNICAMENTE en formato JSON: {"agente_1": {"accuracy": n, "reasoning": n, "structure": n, "utility": n, "comments": "..."}, ...}`
 
 export function RubricBox() {
   const [expanded, setExpanded] = useState(false)

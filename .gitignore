@@ -21,3 +21,6 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
+
+# Claude Code local session settings (machine-specific, not shared)
+.claude/settings.local.json

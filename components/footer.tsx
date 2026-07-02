@@ -7,14 +7,18 @@ export function Footer() {
         <div className="footer-brand">
           <span className="logo-glyph" />
           <span className="wordmark">UMBRA</span>
-          <span className="footer-tagline">Built on Solana</span>
+          <span className="footer-tagline">By Branner</span>
         </div>
         <div className="footer-links">
           <Link href="/marketplace">Marketplace</Link>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/brannerXD/umbra-ai" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
-          <a href="#" rel="noopener noreferrer">
+          <a
+            href="https://github.com/brannerXD/umbra-ai/blob/main/README.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Docs
           </a>
         </div>

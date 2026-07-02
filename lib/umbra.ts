@@ -5,9 +5,19 @@
 
 import type { Agent, Category, CompetitionStatus } from "./types"
 
-export function formatTime(date: Date | null): string {
-  if (!date) return "—"
-  const diff = Date.now() - date.getTime()
+// Next.js serializes Date props to ISO strings when crossing the server→client
+// boundary. This helper normalizes both cases so formatters never crash.
+function toDate(date: Date | string | null | undefined): Date | null {
+  if (!date) return null
+  if (date instanceof Date) return date
+  const d = new Date(date as string)
+  return isNaN(d.getTime()) ? null : d
+}
+
+export function formatTime(date: Date | string | null): string {
+  const d = toDate(date)
+  if (!d) return "—"
+  const diff = Date.now() - d.getTime()
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
@@ -18,9 +28,10 @@ export function formatTime(date: Date | null): string {
   return `Hace ${Math.floor(days / 7)}w`
 }
 
-export function formatTimeUntil(date: Date | null): string {
-  if (!date) return "—"
-  const diff = date.getTime() - Date.now()
+export function formatTimeUntil(date: Date | string | null): string {
+  const d = toDate(date)
+  if (!d) return "—"
+  const diff = d.getTime() - Date.now()
   if (diff <= 0) return "Ya comenzó"
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
@@ -29,9 +40,10 @@ export function formatTimeUntil(date: Date | null): string {
   return `${minutes}m`
 }
 
-export function formatCountdown(date: Date | null): string {
-  if (!date) return ""
-  const diff = date.getTime() - Date.now()
+export function formatCountdown(date: Date | string | null): string {
+  const d = toDate(date)
+  if (!d) return ""
+  const diff = d.getTime() - Date.now()
   if (diff <= 0) return "Finalizada"
   const h = Math.floor(diff / 3600000)
   const m = Math.floor((diff % 3600000) / 60000)
@@ -89,11 +101,11 @@ export function getPositionLabel(pos: number): string {
   return `${pos}to lugar`
 }
 
-export function shortenWallet(addr: string | null): string {
-  if (!addr) return ""
-  return addr.slice(0, 4) + "···" + addr.slice(-4)
-}
-
-export function formatSOL(amount: number): string {
-  return `${amount.toFixed(2)} SOL`
+export function formatPrice(amount: number, currency: string = "USD"): string {
+  if (currency === "COP") {
+    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
+      amount,
+    )
+  }
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
 }

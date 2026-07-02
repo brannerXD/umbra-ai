@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getCompetitionById, listCompetitions } from "@/lib/services"
+import { getCompetitionById, getRankedAgents, listCompetitions } from "@/lib/services"
 import { DetalleClient } from "@/components/detalle/detalle-client"
 import "./detalle.css"
 
@@ -15,12 +15,12 @@ export default async function DetallePage({
   searchParams: Promise<{ id?: string }>
 }) {
   const { id } = await searchParams
-  const all = await listCompetitions()
+  const [all, allAgents] = await Promise.all([listCompetitions(), getRankedAgents()])
   const competition = id ? await getCompetitionById(id) : all[0]
 
   if (!competition) {
     notFound()
   }
 
-  return <DetalleClient comp={competition} />
+  return <DetalleClient comp={competition} allAgents={allAgents} />
 }

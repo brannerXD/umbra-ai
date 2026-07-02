@@ -7,9 +7,10 @@ import { ScoreCount } from "@/components/score-count"
 import type { CompetitionResult } from "@/lib/types"
 
 const CRIT_LABELS: Record<string, string> = {
-  claridad: "Claridad",
-  precision: "Precisión",
-  utilidad: "Utilidad",
+  accuracy: "Precisión",
+  reasoning: "Razonamiento",
+  structure: "Estructura",
+  utility: "Utilidad",
 }
 
 export function ResponseCard({

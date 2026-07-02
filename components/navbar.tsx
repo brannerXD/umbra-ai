@@ -4,12 +4,12 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ThemeToggle } from "./theme-toggle"
-import { WalletButton } from "./wallet-button"
+import { AuthButton } from "./auth-button"
 
 const LINKS = [
   { href: "/competencias", label: "Competencias" },
-  { href: "/#ranking", label: "Ranking" },
-  { href: "/marketplace", label: "Marketplace" },
+  { href: "/#ranking",     label: "Ranking"       },
+  { href: "/marketplace",  label: "Marketplace"   },
 ]
 
 export function Navbar() {
@@ -50,7 +50,7 @@ export function Navbar() {
         </div>
         <div className="nav-right">
           <ThemeToggle />
-          <WalletButton />
+          <AuthButton />
         </div>
         <button
           className={`nav-hamburger ${menuOpen ? "open" : ""}`}
@@ -58,9 +58,7 @@ export function Navbar() {
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((v) => !v)}
         >
-          <span />
-          <span />
-          <span />
+          <span /><span /><span />
         </button>
       </div>
     </nav>

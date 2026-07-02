@@ -1,12 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { CountUp } from "@/components/count-up"
 import { ScoreChart } from "./score-chart"
-import { useWallet } from "@/components/wallet-provider"
+import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
-import { formatSOL, shortenWallet } from "@/lib/umbra"
+import { formatPrice, formatTime } from "@/lib/umbra"
+import { archiveAgent, createListing, updateAgentDescription } from "@/lib/services"
 import type { Agent, MarketplaceListingWithAgent } from "@/lib/types"
 
 const HIST_LIMIT = 5
@@ -22,7 +24,8 @@ export function AgenteClient({
   rankPosition: number
   listing: MarketplaceListingWithAgent | null
 }) {
-  const { wallet } = useWallet()
+  const router = useRouter()
+  const { user } = useAuth()
   const { showToast } = useToast()
 
   const [description, setDescription] = useState(initialAgent.description)
@@ -33,12 +36,16 @@ export function AgenteClient({
   // Modales
   const [editOpen, setEditOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
   const [priceDraft, setPriceDraft] = useState("")
+  const [priceUnit, setPriceUnit] = useState<"USD" | "COP">("USD")
   const [licenseDraft, setLicenseDraft] = useState("Licencia exclusiva")
   const [publishing, setPublishing] = useState(false)
+  const [savingDesc, setSavingDesc] = useState(false)
+  const [archiving, setArchiving] = useState(false)
 
-  const isOwner = !!wallet && initialAgent.wallet.startsWith(wallet.slice(0, 8))
+  const isOwner = !!user && initialAgent.ownerId === user.id
 
   const winPts = initialAgent.wins * 10
   const partPts = initialAgent.comps * 2
@@ -54,35 +61,65 @@ export function AgenteClient({
 
   const toShow = showAll ? filtered : filtered.slice(0, HIST_LIMIT)
 
-  function saveDescription() {
+  async function saveDescription() {
+    setSavingDesc(true)
+    const ok = await updateAgentDescription(initialAgent.id, descDraft)
+    setSavingDesc(false)
+    if (!ok) {
+      showToast("No se pudo guardar la descripción.", "warn")
+      return
+    }
     setDescription(descDraft)
     setEditOpen(false)
     showToast("Descripcion actualizada.", "success")
   }
 
-  function publishListing() {
+  async function publishListing() {
     const price = Number.parseFloat(priceDraft)
     if (!price || price <= 0) {
       showToast("Ingresa un precio valido.", "warn")
       return
     }
     setPublishing(true)
-    setTimeout(() => {
-      setListing({
-        agentId: initialAgent.id,
-        listed: true,
-        price,
-        priceUnit: "SOL",
-        licenseType: licenseDraft,
-        description: `Acceso a ${initialAgent.name}, listado por su creador.`,
-        seller: initialAgent.wallet,
-        listedAt: new Date(),
-        agent: initialAgent,
-      })
-      setPublishing(false)
-      setListOpen(false)
-      showToast(`${initialAgent.name} fue listado en el marketplace por ${formatSOL(price)}.`, "success")
-    }, 700)
+    const description = `Acceso a ${initialAgent.name}, listado por su creador.`
+    const ok = await createListing({
+      agentId: initialAgent.id,
+      price,
+      priceUnit,
+      licenseType: licenseDraft,
+      description,
+    })
+    setPublishing(false)
+    if (!ok) {
+      showToast("No se pudo publicar el listado. Intenta de nuevo.", "warn")
+      return
+    }
+    setListing({
+      agentId: initialAgent.id,
+      listed: true,
+      price,
+      priceUnit,
+      licenseType: licenseDraft,
+      description,
+      sellerName: user?.email?.split("@")[0] ?? "Usuario",
+      listedAt: new Date(),
+      agent: initialAgent,
+    })
+    setListOpen(false)
+    showToast(`${initialAgent.name} fue listado en el marketplace por ${formatPrice(price, priceUnit)}.`, "success")
+  }
+
+  async function confirmArchiveAgent() {
+    setArchiving(true)
+    const ok = await archiveAgent(initialAgent.id)
+    setArchiving(false)
+    if (!ok) {
+      showToast("No se pudo archivar el agente.", "warn")
+      return
+    }
+    showToast(`${initialAgent.name} fue archivado.`, "success")
+    setArchiveOpen(false)
+    router.refresh()
   }
 
   return (
@@ -110,18 +147,6 @@ export function AgenteClient({
               </div>
               <span className="cat-tag">{initialAgent.categoryLabel}</span>
               <p className="agent-desc">{description}</p>
-              <div className="agent-wallet-row">
-                <span className="wallet-label">Creado por:</span>
-                <span className="wallet-addr">{shortenWallet(initialAgent.wallet)}</span>
-                <a
-                  className="wallet-solana-link"
-                  href={`https://explorer.solana.com/address/${initialAgent.wallet}?cluster=devnet`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Ver en Solana ↗
-                </a>
-              </div>
             </div>
           </div>
         </div>
@@ -197,7 +222,7 @@ export function AgenteClient({
                 <p className="section-sub">{listing.description}</p>
               </div>
               <div className="listing-action">
-                <span className="listing-price">{formatSOL(listing.price)}</span>
+                <span className="listing-price">{formatPrice(listing.price, listing.priceUnit)}</span>
                 <Link href="/marketplace" className="btn-primary">
                   <span>Ver en marketplace →</span>
                 </Link>
@@ -228,6 +253,11 @@ export function AgenteClient({
               {!listing && (
                 <button className="btn-ghost btn-sm" onClick={() => setListOpen(true)}>
                   Listar en marketplace
+                </button>
+              )}
+              {!initialAgent.archived && (
+                <button className="btn-ghost btn-sm" onClick={() => setArchiveOpen(true)}>
+                  Archivar agente
                 </button>
               )}
             </div>
@@ -289,7 +319,7 @@ export function AgenteClient({
                     <div className="hist-info">
                       <div className="hist-comp-name">{h.compName}</div>
                       <div className="hist-meta">
-                        <span className="hist-time">{h.time}</span>
+                        <span className="hist-time">{formatTime(h.time)}</span>
                         <span className="hist-score">{`Score: ${h.score}/100`}</span>
                         <span className="hist-response-time">{`· ${h.responseTime}s`}</span>
                       </div>
@@ -335,8 +365,8 @@ export function AgenteClient({
               <button className="btn-ghost" onClick={() => setEditOpen(false)}>
                 Cancelar
               </button>
-              <button className="btn-primary" onClick={saveDescription}>
-                <span>Guardar cambios</span>
+              <button className="btn-primary" disabled={savingDesc} onClick={saveDescription}>
+                <span>{savingDesc ? "Guardando..." : "Guardar cambios"}</span>
               </button>
             </div>
           </div>
@@ -353,16 +383,27 @@ export function AgenteClient({
             <h3 className="modal-title">Listar agente en marketplace</h3>
             <p className="modal-sub">Define el precio y tipo de licencia para tu agente.</p>
             <div className="field-group">
-              <label className="field-label">Precio (SOL)</label>
-              <input
-                type="number"
-                className="field-input"
-                placeholder="3.5"
-                step="0.1"
-                min="0"
-                value={priceDraft}
-                onChange={(e) => setPriceDraft(e.target.value)}
-              />
+              <label className="field-label">Precio</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="number"
+                  className="field-input"
+                  placeholder="99"
+                  step="0.01"
+                  min="0"
+                  value={priceDraft}
+                  onChange={(e) => setPriceDraft(e.target.value)}
+                />
+                <select
+                  className="field-input field-select"
+                  style={{ maxWidth: 100 }}
+                  value={priceUnit}
+                  onChange={(e) => setPriceUnit(e.target.value as "USD" | "COP")}
+                >
+                  <option value="USD">USD</option>
+                  <option value="COP">COP</option>
+                </select>
+              </div>
             </div>
             <div className="field-group">
               <label className="field-label">Tipo de licencia</label>
@@ -381,6 +422,30 @@ export function AgenteClient({
               </button>
               <button className="btn-primary" disabled={publishing} onClick={publishListing}>
                 <span>{publishing ? "Publicando..." : "Publicar listado"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal archivar agente */}
+      {archiveOpen && (
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setArchiveOpen(false)}>
+          <div className="modal-box">
+            <button className="modal-close" aria-label="Cerrar" onClick={() => setArchiveOpen(false)}>
+              ✕
+            </button>
+            <h3 className="modal-title">Archivar {initialAgent.name}</h3>
+            <p className="modal-sub">
+              Desaparecerá del ranking público y se quitará del marketplace si estaba listado. Su historial de
+              competencias se conserva. No se borra nada de forma permanente.
+            </p>
+            <div className="modal-actions">
+              <button className="btn-ghost" onClick={() => setArchiveOpen(false)}>
+                Cancelar
+              </button>
+              <button className="btn-primary" disabled={archiving} onClick={confirmArchiveAgent}>
+                <span>{archiving ? "Archivando..." : "Archivar agente"}</span>
               </button>
             </div>
           </div>
