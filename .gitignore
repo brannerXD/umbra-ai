@@ -21,15 +21,3 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
-
-# Vercel / v0 internals
-.vercel/
-.snowflake/
-.v0-trash/
-__v0_runtime_loader.js
-__v0_devtools.tsx
-__v0_jsx-dev-runtime.ts
-
-# Empty v0 residue folders
-.agents/
-.codex/
