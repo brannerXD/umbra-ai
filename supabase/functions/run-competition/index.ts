@@ -1,6 +1,6 @@
 // Ejecuta una competencia completa:
 // 1. Llama al endpoint de cada agente inscrito con el prompt de la competencia.
-// 2. Evalúa las respuestas con Claude según la rúbrica (accuracy/reasoning/structure/utility).
+// 2. Evalúa las respuestas con un LLM (Groq) según la rúbrica (accuracy/reasoning/structure/utility).
 // 3. Guarda evaluaciones, determina el ganador y actualiza las estadísticas de los agentes.
 //
 // Usa la service role key (inyectada automáticamente por Supabase) para poder
@@ -14,7 +14,7 @@ const CORS_HEADERS = {
 }
 
 const AGENT_TIMEOUT_MS = 10000
-const CLAUDE_MODEL = "claude-sonnet-5"
+const JUDGE_MODEL = "llama-3.3-70b-versatile"
 
 interface AgentAnswer {
   entryId: string
@@ -54,7 +54,7 @@ interface Judged {
   comments: string
 }
 
-async function judgeWithClaude(
+async function judgeWithGroq(
   apiKey: string,
   prompt: string,
   answers: AgentAnswer[],
@@ -77,27 +77,27 @@ ${respondents.map((a) => `### ${a.agentName}\n${a.response}`).join("\n\n")}
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"${respondents[0].agentName}": {"accuracy": 0, "reasoning": 0, "structure": 0, "utility": 0, "comments": "..."}, ...un objeto por cada agente listado arriba}`
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: CLAUDE_MODEL,
+      model: JUDGE_MODEL,
       max_tokens: 2048,
+      response_format: { type: "json_object" },
       messages: [{ role: "user", content: rubric }],
     }),
   })
 
   if (!res.ok) {
-    console.error("Anthropic API error", res.status, await res.text().catch(() => ""))
+    console.error("Groq API error", res.status, await res.text().catch(() => ""))
     return {}
   }
 
   const data = await res.json()
-  const text: string = data?.content?.[0]?.text ?? ""
+  const text: string = data?.choices?.[0]?.message?.content ?? ""
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) return {}
 
@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY")
+  const groqKey = Deno.env.get("GROQ_API_KEY")
 
   const supabase = createClient(supabaseUrl, serviceRoleKey)
 
@@ -128,11 +128,11 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (!anthropicKey) {
+    if (!groqKey) {
       return new Response(
         JSON.stringify({
           ok: false,
-          message: "Falta configurar el secreto ANTHROPIC_API_KEY en el proyecto de Supabase.",
+          message: "Falta configurar el secreto GROQ_API_KEY en el proyecto de Supabase.",
         }),
         { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       )
@@ -204,8 +204,8 @@ Deno.serve(async (req: Request) => {
       ),
     )
 
-    // 3. Evaluar con Claude.
-    const judged = await judgeWithClaude(anthropicKey, comp.prompt ?? "", answers)
+    // 3. Evaluar con Groq.
+    const judged = await judgeWithGroq(groqKey, comp.prompt ?? "", answers)
 
     // 4. Guardar evaluaciones y puntajes finales.
     const scored = await Promise.all(
