@@ -8,8 +8,8 @@ import { WalletButton } from "./wallet-button"
 
 const LINKS = [
   { href: "/competencias", label: "Competencias" },
-  { href: "/#ranking", label: "Ranking" },
-  { href: "/marketplace", label: "Marketplace" },
+  { href: "/#ranking",     label: "Ranking"       },
+  { href: "/marketplace",  label: "Marketplace"   },
 ]
 
 export function Navbar() {
@@ -58,9 +58,7 @@ export function Navbar() {
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((v) => !v)}
         >
-          <span />
-          <span />
-          <span />
+          <span /><span /><span />
         </button>
       </div>
     </nav>

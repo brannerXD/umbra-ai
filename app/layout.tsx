@@ -1,7 +1,6 @@
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata, Viewport } from "next"
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google"
-import Script from "next/script"
 import type { ReactNode } from "react"
 import { Providers } from "@/components/providers"
 import "./globals.css"
@@ -55,12 +54,12 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html
       lang="es"
       data-theme="dark"
+      suppressHydrationWarning
       className={`${inter.variable} ${fraunces.variable} ${jetbrains.variable}`}
     >
       <body>
-        <Script id="umbra-theme" strategy="beforeInteractive">
-          {themeScript}
-        </Script>
+        {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <Providers>{children}</Providers>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
