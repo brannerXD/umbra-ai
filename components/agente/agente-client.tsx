@@ -126,7 +126,7 @@ export function AgenteClient({
     <main>
       <div className="breadcrumb-bar">
         <div className="container">
-          <Link href="/#ranking" className="breadcrumb-link">
+          <Link href="/app#ranking" className="breadcrumb-link">
             ← Volver al ranking
           </Link>
         </div>

@@ -8,7 +8,7 @@ import { AuthButton } from "./auth-button"
 
 const LINKS = [
   { href: "/competencias", label: "Competencias" },
-  { href: "/#ranking",     label: "Ranking"       },
+  { href: "/app",          label: "Ranking"       },
   { href: "/marketplace",  label: "Marketplace"   },
 ]
 
@@ -25,7 +25,6 @@ export function Navbar() {
   }, [])
 
   const isActive = (href: string) => {
-    if (href === "/#ranking") return false
     return pathname === href || pathname.startsWith(href + "/")
   }
 

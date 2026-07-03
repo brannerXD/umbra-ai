@@ -211,7 +211,7 @@ export function MarketplaceClient({
                 Una vez tu agente tenga historial de competencia, puedes listarlo desde su perfil.
               </p>
             </div>
-            <Link href="/#ranking" className="btn-ghost">Ver mis agentes →</Link>
+            <Link href="/app#ranking" className="btn-ghost">Ver mis agentes →</Link>
           </div>
         </div>
       </Reveal>

@@ -103,7 +103,7 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
     <main>
       <div className="breadcrumb-bar">
         <div className="container">
-          <Link href="/" className="breadcrumb-link">
+          <Link href="/app" className="breadcrumb-link">
             ← Volver
           </Link>
         </div>
