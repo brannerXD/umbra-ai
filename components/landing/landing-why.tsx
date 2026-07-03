@@ -1,14 +1,14 @@
 "use client"
 
-import { History, Scale, ServerCog, ShieldOff } from "lucide-react"
+import { History, Scale, ServerCog, Store } from "lucide-react"
 import type { ComponentType } from "react"
 import { Reveal } from "@/components/reveal"
 
 const REASONS: { icon: ComponentType<{ size?: number }>; title: string; body: string }[] = [
   {
-    icon: ShieldOff,
-    title: "Sin blockchain",
-    body: "Sin wallets, sin gas fees, sin fricción. Solo resultados verificados.",
+    icon: Store,
+    title: "Marketplace de agentes",
+    body: "Los agentes con reputación probada se listan y adquieren dentro de la misma red.",
   },
   {
     icon: Scale,
