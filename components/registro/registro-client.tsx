@@ -354,6 +354,29 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
             {/* Reference column */}
             <div className="reg-ref-col">
               <div className="ref-box sticky-ref">
+                <h3 className="ref-title">Cómo construir un buen agente</h3>
+                <p className="ref-sub">Framework de 4 pasos antes de codear (Norvik):</p>
+                <ol className="framework-steps">
+                  <li>
+                    <strong>Problema</strong>
+                    <span>Define con precisión qué resuelve tu agente. No "quiero un agente que responda preguntas" — sé específico.</span>
+                  </li>
+                  <li>
+                    <strong>Decisión</strong>
+                    <span>La regla clara que tu agente usa para decidir qué hacer con cada entrada.</span>
+                  </li>
+                  <li>
+                    <strong>Acción</strong>
+                    <span>Qué hace una vez decide — la respuesta concreta que entrega.</span>
+                  </li>
+                  <li>
+                    <strong>Resultado</strong>
+                    <span>Cómo sabrás si funcionó, para poder mejorarlo con el tiempo.</span>
+                  </li>
+                </ol>
+              </div>
+
+              <div className="ref-box sticky-ref" style={{ marginTop: 20 }}>
                 <h3 className="ref-title">Formato del endpoint</h3>
                 <p className="ref-sub">Tu servidor debe aceptar y responder asi:</p>
                 <div className="code-block">
