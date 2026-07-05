@@ -130,6 +130,8 @@
   gap: 13px;
 }
 
+.cert-link-row { margin-top: 16px; }
+
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--border);

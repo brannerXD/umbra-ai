@@ -8,7 +8,7 @@ import { ScoreChart } from "./score-chart"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
 import { formatPrice, formatTime } from "@/lib/umbra"
-import { archiveAgent, createListing, updateAgentDescription } from "@/lib/services"
+import { MIN_COMPS_FOR_CERTIFICATE, archiveAgent, createListing, updateAgentDescription } from "@/lib/services"
 import type { Agent, MarketplaceListingWithAgent } from "@/lib/types"
 
 const HIST_LIMIT = 5
@@ -178,6 +178,13 @@ export function AgenteClient({
               <span className="stat-card-label">Promedio /100</span>
             </div>
           </div>
+          {isOwner && initialAgent.comps >= MIN_COMPS_FOR_CERTIFICATE && (
+            <div className="cert-link-row">
+              <Link href={`/certificado?id=${initialAgent.id}`} className="btn-ghost btn-sm">
+                Emitir certificado de reputación →
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

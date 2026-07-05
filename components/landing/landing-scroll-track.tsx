@@ -134,8 +134,11 @@ export function LandingScrollTrack({ children }: { children: ReactNode }) {
       fillRef.current?.setAttribute("stroke-dasharray", String(pathLen))
 
       // El progreso arranca en 0 justo al cargar (sin scroll, la línea no ha salido
-      // de UMBRA) y llega a 1 cuando el botón queda centrado en la pantalla.
-      const scrollAtDone = Math.max(1, trackTop + originY + len - window.innerHeight / 2)
+      // de UMBRA) y llega a 1 cuando el botón queda centrado en la pantalla. Se
+      // limita al scroll máximo real de la página: si el documento no da para
+      // centrar el botón, llegar al fondo igual completa la línea.
+      const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+      const scrollAtDone = Math.min(Math.max(1, trackTop + originY + len - window.innerHeight / 2), maxScroll)
 
       geomRef.current = { trackTop, originY, len, amplitude, centerX, pathLen, scrollAtDone }
 

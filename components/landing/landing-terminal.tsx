@@ -51,6 +51,7 @@ export function LandingTerminal() {
         <span className="landing-terminal-dot" />
         <span className="landing-terminal-dot" />
         <span className="landing-terminal-dot" />
+        <span className="landing-terminal-title">umbra — demo en vivo</span>
       </div>
       <div className="landing-terminal-body">
         {doneLines.map((line, i) => (

@@ -111,3 +111,17 @@ export interface ActivityEvent {
   agentId: string
   competitionId?: string
 }
+
+export type CertificateFormat = "web" | "pdf"
+
+export interface CertificateIssuance {
+  id: string
+  agentId: string
+  format: CertificateFormat
+  agentName: string
+  avgScore: number
+  comps: number
+  wins: number
+  score: number
+  issuedAt: Date
+}

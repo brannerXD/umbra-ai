@@ -31,7 +31,7 @@ export function Navbar() {
   return (
     <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
       <div className="nav-inner">
-        <Link href="/" className="nav-logo">
+        <Link href="/app" className="nav-logo">
           <span className="logo-glyph" />
           <span className="wordmark">UMBRA</span>
         </Link>

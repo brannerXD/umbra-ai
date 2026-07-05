@@ -11,6 +11,8 @@ import type {
   Agent,
   AgentHistoryEntry,
   Category,
+  CertificateFormat,
+  CertificateIssuance,
   Competition,
   CompetitionEvaluation,
   CompetitionResult,
@@ -506,4 +508,70 @@ export async function getActivityForUser(ownerId: string): Promise<ActivityEvent
   })
 
   return events.sort((a, b) => b.date.getTime() - a.date.getTime())
+}
+
+// ── CERTIFICADO DE REPUTACIÓN ───────────
+
+// Mínimo de competencias completadas para poder emitir un certificado —
+// evita certificar agentes con una sola prueba.
+export const MIN_COMPS_FOR_CERTIFICATE = 3
+
+interface CertificateIssuanceRow {
+  id: string
+  agent_id: string
+  format: CertificateFormat
+  agent_name: string
+  avg_score: number | string
+  comps_count: number
+  wins: number
+  score: number
+  issued_at: string
+}
+
+function mapCertificateIssuance(row: CertificateIssuanceRow): CertificateIssuance {
+  return {
+    id: row.id,
+    agentId: row.agent_id,
+    format: row.format,
+    agentName: row.agent_name,
+    avgScore: Number(row.avg_score),
+    comps: row.comps_count,
+    wins: row.wins,
+    score: row.score,
+    issuedAt: new Date(row.issued_at),
+  }
+}
+
+// Registra una emisión (snapshot de los datos del agente en ese momento) y la devuelve.
+export async function issueCertificate(agent: Agent, format: CertificateFormat): Promise<CertificateIssuance | null> {
+  const { data, error } = await supabase
+    .from("certificate_issuances")
+    .insert({
+      agent_id: agent.id,
+      format,
+      agent_name: agent.name,
+      avg_score: agent.avgScore,
+      comps_count: agent.comps,
+      wins: agent.wins,
+      score: agent.score,
+    })
+    .select("*")
+    .single()
+
+  if (error || !data) {
+    console.error("issueCertificate failed", error)
+    return null
+  }
+  return mapCertificateIssuance(data as CertificateIssuanceRow)
+}
+
+export async function getCertificateIssuances(agentId: string): Promise<CertificateIssuance[]> {
+  const { data, error } = await supabase
+    .from("certificate_issuances")
+    .select("*")
+    .eq("agent_id", agentId)
+    .order("issued_at", { ascending: false })
+
+  if (error || !data) return []
+  return data.map((row) => mapCertificateIssuance(row as CertificateIssuanceRow))
 }
