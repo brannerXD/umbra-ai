@@ -1,12 +1,16 @@
-import { ActiveComps } from "@/components/home/active-comps"
-import { Hero } from "@/components/home/hero"
-import { MarketTeaser } from "@/components/home/market-teaser"
-import { RankingSection } from "@/components/home/ranking-section"
 import { Ticker } from "@/components/home/ticker"
+import { LandingBackground } from "@/components/landing/landing-background"
+import { LandingCta } from "@/components/landing/landing-cta"
+import { LandingHero } from "@/components/landing/landing-hero"
+import { LandingMarquee } from "@/components/landing/landing-marquee"
+import { LandingOrigin } from "@/components/landing/landing-origin"
+import { LandingScrollTrack } from "@/components/landing/landing-scroll-track"
+import { LandingSteps } from "@/components/landing/landing-steps"
+import { LandingWhy } from "@/components/landing/landing-why"
 import { getMarketplaceListings, getRankedAgents, listCompetitions } from "@/lib/services"
-import "./home.css"
+import "./landing.css"
 
-export default async function HomePage() {
+export default async function LandingPage() {
   const [allAgents, competitions, listings] = await Promise.all([
     getRankedAgents(),
     listCompetitions(),
@@ -23,12 +27,20 @@ export default async function HomePage() {
     )
 
   return (
-    <>
-      <Hero totalAgents={totalAgents} activeComps={activeComps} totalEvals={totalEvals} />
+    <LandingScrollTrack>
+      <LandingBackground />
+      <LandingOrigin />
+      <LandingHero
+        agents={allAgents.slice(0, 8)}
+        totalAgents={totalAgents}
+        activeComps={activeComps}
+        totalEvals={totalEvals}
+      />
       <Ticker competitions={competitions} listings={listings} />
-      <RankingSection allAgents={allAgents} />
-      <ActiveComps competitions={competitions} />
-      <MarketTeaser />
-    </>
+      <LandingSteps />
+      <LandingMarquee />
+      <LandingWhy />
+      <LandingCta />
+    </LandingScrollTrack>
   )
 }

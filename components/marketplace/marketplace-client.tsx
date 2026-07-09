@@ -34,6 +34,7 @@ export function MarketplaceClient({
   const [sort, setSort] = useState<SortKey>("score-desc")
   const [selected, setSelected] = useState<MarketplaceListingWithAgent | null>(null)
   const [processing, setProcessing] = useState(false)
+  const [buyAccepted, setBuyAccepted] = useState(false)
 
   const rankPos = (id: string) => ranking.findIndex((a) => a.id === id) + 1
 
@@ -62,6 +63,7 @@ export function MarketplaceClient({
       showToast("Inicia sesión primero para adquirir un agente.", "warn")
       return
     }
+    setBuyAccepted(false)
     setSelected(listing)
   }
 
@@ -211,7 +213,7 @@ export function MarketplaceClient({
                 Una vez tu agente tenga historial de competencia, puedes listarlo desde su perfil.
               </p>
             </div>
-            <Link href="/#ranking" className="btn-ghost">Ver mis agentes →</Link>
+            <Link href="/app#ranking" className="btn-ghost">Ver mis agentes →</Link>
           </div>
         </div>
       </Reveal>
@@ -234,9 +236,24 @@ export function MarketplaceClient({
               Esta es una simulación de compra — el procesamiento de pago real aún no está implementado.
             </div>
 
+            <label className="consent-check">
+              <input
+                type="checkbox"
+                checked={buyAccepted}
+                onChange={(e) => setBuyAccepted(e.target.checked)}
+              />
+              <span>
+                Acepto los{" "}
+                <Link href="/terminos#compradores" target="_blank">
+                  Términos del Marketplace para compradores
+                </Link>{" "}
+                y entiendo el alcance de la licencia.
+              </span>
+            </label>
+
             <div className="modal-actions">
               <button className="btn-ghost" onClick={() => setSelected(null)} disabled={processing}>Cancelar</button>
-              <button className="btn-primary" onClick={confirmPurchase} disabled={processing}>
+              <button className="btn-primary" onClick={confirmPurchase} disabled={processing || !buyAccepted}>
                 <span>{processing ? "Procesando transacción..." : "Confirmar compra"}</span>
               </button>
             </div>

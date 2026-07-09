@@ -1,0 +1,136 @@
+/* ========================================
+   UMBRA — PÁGINA LEGAL (Términos y Condiciones)
+   Comparte la estética del documento de privacidad.
+   ======================================== */
+
+.legal {
+  padding: calc(var(--nav-h) + 48px) 0 96px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.legal-inner {
+  max-width: 760px;
+}
+
+.legal-head {
+  padding-bottom: 32px;
+  margin-bottom: 40px;
+  border-bottom: 1px solid var(--border);
+}
+
+.legal-kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 14px;
+}
+
+.legal-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+}
+
+.legal-meta {
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.legal-section {
+  margin-bottom: 36px;
+  scroll-margin-top: calc(var(--nav-h) + 24px);
+}
+
+.legal-section h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+
+.legal-section p {
+  font-size: 15.5px;
+  line-height: 1.72;
+  color: var(--text-2);
+  margin-bottom: 14px;
+}
+
+.legal-section p:last-child {
+  margin-bottom: 0;
+}
+
+.legal-note {
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14.5px !important;
+}
+
+.legal-list {
+  list-style: none;
+  margin: 4px 0 14px;
+  padding: 0;
+}
+
+.legal-list li {
+  position: relative;
+  padding-left: 20px;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+.legal-list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 11px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+
+.legal-list li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.legal a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border-2);
+  transition: text-decoration-color var(--transition);
+}
+
+.legal a:hover {
+  text-decoration-color: var(--text);
+}
+
+.legal-foot {
+  margin-top: 48px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.legal-foot a {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--text-2);
+}
+
+.legal-foot a:hover {
+  color: var(--text);
+}

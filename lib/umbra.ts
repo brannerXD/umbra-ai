@@ -101,6 +101,12 @@ export function getPositionLabel(pos: number): string {
   return `${pos}to lugar`
 }
 
+export function formatFullDate(date: Date | string | null): string {
+  const d = toDate(date)
+  if (!d) return "—"
+  return new Intl.DateTimeFormat("es", { day: "numeric", month: "long", year: "numeric" }).format(d)
+}
+
 export function formatPrice(amount: number, currency: string = "USD"): string {
   if (currency === "COP") {
     return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
