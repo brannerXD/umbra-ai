@@ -42,6 +42,7 @@ export function AgenteClient({
   const [priceUnit, setPriceUnit] = useState<"USD" | "COP">("USD")
   const [licenseDraft, setLicenseDraft] = useState("Licencia exclusiva")
   const [publishing, setPublishing] = useState(false)
+  const [listAccepted, setListAccepted] = useState(false)
   const [savingDesc, setSavingDesc] = useState(false)
   const [archiving, setArchiving] = useState(false)
 
@@ -258,7 +259,13 @@ export function AgenteClient({
                 Editar descripcion
               </button>
               {!listing && (
-                <button className="btn-ghost btn-sm" onClick={() => setListOpen(true)}>
+                <button
+                  className="btn-ghost btn-sm"
+                  onClick={() => {
+                    setListAccepted(false)
+                    setListOpen(true)
+                  }}
+                >
                   Listar en marketplace
                 </button>
               )}
@@ -423,11 +430,29 @@ export function AgenteClient({
                 <option value="Licencia de uso (no exclusiva)">Licencia de uso (no exclusiva)</option>
               </select>
             </div>
+            <label className="consent-check">
+              <input
+                type="checkbox"
+                checked={listAccepted}
+                onChange={(e) => setListAccepted(e.target.checked)}
+              />
+              <span>
+                Confirmo que soy el titular de este agente y acepto los{" "}
+                <Link href="/terminos#vendedores" target="_blank">
+                  Términos del Marketplace para vendedores
+                </Link>
+                .
+              </span>
+            </label>
             <div className="modal-actions">
               <button className="btn-ghost" onClick={() => setListOpen(false)}>
                 Cancelar
               </button>
-              <button className="btn-primary" disabled={publishing} onClick={publishListing}>
+              <button
+                className="btn-primary"
+                disabled={publishing || !listAccepted}
+                onClick={publishListing}
+              >
                 <span>{publishing ? "Publicando..." : "Publicar listado"}</span>
               </button>
             </div>

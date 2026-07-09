@@ -114,6 +114,33 @@ body::before {
 
 ::selection { background: var(--text); color: var(--bg); }
 
+/* Fila de aceptación de términos (registro, listar y comprar) */
+.consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 0 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.consent-check input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--text);
+  cursor: pointer;
+}
+
+.consent-check a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .container {
   max-width: 1180px;
   margin: 0 auto;
