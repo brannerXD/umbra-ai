@@ -11,6 +11,8 @@ export function Footer() {
         </div>
         <div className="footer-links">
           <Link href="/marketplace">Marketplace</Link>
+          <Link href="/terminos">Términos</Link>
+          <Link href="/privacidad">Privacidad</Link>
           <a href="https://github.com/brannerXD/umbra-ai" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
