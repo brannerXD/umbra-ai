@@ -543,20 +543,14 @@ function mapCertificateIssuance(row: CertificateIssuanceRow): CertificateIssuanc
 }
 
 // Registra una emisión (snapshot de los datos del agente en ese momento) y la devuelve.
+// La emisión pasa por la función `issue_certificate` en Postgres, que deriva los
+// valores del registro real del agente. Así el certificado no se puede falsificar:
+// el cliente no inserta filas directamente ni puede inflar los puntajes.
 export async function issueCertificate(agent: Agent, format: CertificateFormat): Promise<CertificateIssuance | null> {
-  const { data, error } = await supabase
-    .from("certificate_issuances")
-    .insert({
-      agent_id: agent.id,
-      format,
-      agent_name: agent.name,
-      avg_score: agent.avgScore,
-      comps_count: agent.comps,
-      wins: agent.wins,
-      score: agent.score,
-    })
-    .select("*")
-    .single()
+  const { data, error } = await supabase.rpc("issue_certificate", {
+    p_agent_id: agent.id,
+    p_format: format,
+  })
 
   if (error || !data) {
     console.error("issueCertificate failed", error)
