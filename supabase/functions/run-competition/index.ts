@@ -135,6 +135,71 @@ async function callAgent(endpoint: string, prompt: string): Promise<{ response: 
   }
 }
 
+// Jueces especializados por categoría: mismo modelo Groq, criterio experto distinto.
+// Se mantienen los 4 ejes (accuracy/reasoning/structure/utility) reinterpretados por área.
+interface Judge {
+  name: string
+  expertise: string
+  axes: { accuracy: string; reasoning: string; structure: string; utility: string }
+}
+
+const JUDGES: Record<string, Judge> = {
+  codigo: {
+    name: "Juez de Código",
+    expertise: "evaluación de código y software",
+    axes: {
+      accuracy: "¿el código es correcto y resuelve el problema pedido?",
+      reasoning: "solidez de la lógica y manejo de casos borde",
+      structure: "legibilidad, organización y buenas prácticas",
+      utility: "qué tan usable e integrable es en producción",
+    },
+  },
+  texto: {
+    name: "Juez de Lenguaje",
+    expertise: "análisis y generación de texto en español",
+    axes: {
+      accuracy: "fidelidad y exactitud factual del texto",
+      reasoning: "coherencia e interpretación correcta del contenido",
+      structure: "claridad, organización y tono adecuado",
+      utility: "utilidad y aplicabilidad de la respuesta",
+    },
+  },
+  prediccion: {
+    name: "Juez Cuantitativo",
+    expertise: "predicción y análisis de datos",
+    axes: {
+      accuracy: "calibración y acierto de la predicción",
+      reasoning: "solidez del análisis y de los factores considerados",
+      structure: "claridad en la presentación de la predicción",
+      utility: "valor accionable de la predicción",
+    },
+  },
+  razonamiento: {
+    name: "Juez de Razonamiento",
+    expertise: "razonamiento lógico y resolución de problemas",
+    axes: {
+      accuracy: "correctitud de la conclusión final",
+      reasoning: "rigor y validez de cada paso lógico",
+      structure: "claridad de la argumentación",
+      utility: "aplicabilidad del razonamiento",
+    },
+  },
+  otro: {
+    name: "Juez General",
+    expertise: "evaluación general de agentes de IA",
+    axes: {
+      accuracy: "¿la respuesta es factualmente correcta y completa?",
+      reasoning: "¿el razonamiento detrás de la respuesta es sólido?",
+      structure: "¿es clara, bien organizada y fácil de leer?",
+      utility: "¿es útil y aplicable al contexto pedido?",
+    },
+  },
+}
+
+function getJudge(category: string | null | undefined): Judge {
+  return JUDGES[category ?? "otro"] ?? JUDGES.otro
+}
+
 interface Judged {
   accuracy: number
   reasoning: number
@@ -147,15 +212,16 @@ async function judgeWithGroq(
   apiKey: string,
   prompt: string,
   answers: AgentAnswer[],
+  judge: Judge,
 ): Promise<Record<string, Judged>> {
   const respondents = answers.filter((a) => a.response !== null)
   if (respondents.length === 0) return {}
 
-  const rubric = `Eres el juez de una competencia de agentes de IA. Evalúa cada respuesta del 0 al 100 según:
-- accuracy: ¿la respuesta es factualmente correcta y completa?
-- reasoning: ¿el razonamiento detrás de la respuesta es sólido?
-- structure: ¿es clara, bien organizada y fácil de leer?
-- utility: ¿es útil y aplicable al contexto pedido?
+  const rubric = `Eres ${judge.name}, un evaluador experto en ${judge.expertise}. Evalúa cada respuesta del 0 al 100 según:
+- accuracy: ${judge.axes.accuracy}
+- reasoning: ${judge.axes.reasoning}
+- structure: ${judge.axes.structure}
+- utility: ${judge.axes.utility}
 
 PROMPT ORIGINAL:
 ${prompt}
@@ -294,7 +360,8 @@ Deno.serve(async (req: Request) => {
     )
 
     // 3. Evaluar con Groq.
-    const judged = await judgeWithGroq(groqKey, comp.prompt ?? "", answers)
+    const judge = getJudge(comp.category)
+    const judged = await judgeWithGroq(groqKey, comp.prompt ?? "", answers, judge)
 
     // 4. Guardar evaluaciones y puntajes finales.
     const scored = await Promise.all(
@@ -326,6 +393,7 @@ Deno.serve(async (req: Request) => {
       .from("competitions")
       .update({
         status: "completada",
+        evaluator: judge.name,
         winner_id: winner?.agentId ?? null,
         winner_score: winner?.finalScore ?? null,
         ends_at: new Date().toISOString(),
