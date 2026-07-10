@@ -85,7 +85,7 @@ function mapCompetition(row: CompetitionRow, results: CompetitionResult[] = []):
     category: row.category as Category,
     categoryLabel: row.category_label ?? getCategoryLabel(row.category),
     status: row.status as Competition["status"],
-    evaluator: row.evaluator ?? "Claude Sonnet",
+    evaluator: row.evaluator ?? "Juez de IA",
     agentsMax: row.agents_max ?? 0,
     agentsEnrolled: row.agents_enrolled ?? 0,
     startedAt: new Date(row.started_at ?? Date.now()),

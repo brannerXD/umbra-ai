@@ -262,7 +262,7 @@ function buildDemoComp(tick: number, startedAt: Date, endsAt: Date): Competition
     category: "razonamiento",
     categoryLabel: "Razonamiento",
     status: isOver ? "completada" : "en-curso",
-    evaluator: "Claude Sonnet",
+    evaluator: "Juez de Razonamiento",
     agentsMax: 6,
     agentsEnrolled: 6,
     startedAt,
