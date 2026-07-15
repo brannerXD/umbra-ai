@@ -3,7 +3,7 @@
 // Funciones puras de formato y derivación.
 // ========================================
 
-import type { Agent, Category, CompetitionStatus } from "./types"
+import type { Agent, BillingModel, Category, CompetitionStatus, ListingType } from "./types"
 
 // Next.js serializes Date props to ISO strings when crossing the server→client
 // boundary. This helper normalizes both cases so formatters never crash.
@@ -109,9 +109,37 @@ export function formatFullDate(date: Date | string | null): string {
 
 export function formatPrice(amount: number, currency: string = "USD"): string {
   if (currency === "COP") {
-    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
-      amount,
-    )
+    // currencyDisplay "code" evita confundir el $ de pesos con el de dólares.
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0,
+      currencyDisplay: "code",
+    }).format(amount)
   }
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
+}
+
+// ── Marketplace: cobro por acceso ────────
+
+export function getBillingLabel(model: BillingModel | string): string {
+  if (model === "uso") return "Por uso"
+  if (model === "unico") return "Pago único"
+  return "Suscripción"
+}
+
+export function getListingTypeLabel(type: ListingType | string): string {
+  return type === "codigo" ? "Código" : "Acceso API"
+}
+
+// Precio según la forma de cobro: por mes, por cada 1.000 llamadas, o pago único.
+export function formatListingPrice(
+  amount: number,
+  currency: string,
+  model: BillingModel | string,
+): string {
+  const base = formatPrice(amount, currency)
+  if (model === "uso") return `${base} / 1.000 llamadas`
+  if (model === "unico") return `${base} · pago único`
+  return `${base} / mes`
 }

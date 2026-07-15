@@ -5,17 +5,19 @@
 // ========================================
 
 import { supabase } from "./supabase"
-import { formatPrice, getCategoryLabel } from "./umbra"
+import { formatListingPrice, getCategoryLabel } from "./umbra"
 import type {
   ActivityEvent,
   Agent,
   AgentHistoryEntry,
+  BillingModel,
   Category,
   CertificateFormat,
   CertificateIssuance,
   Competition,
   CompetitionEvaluation,
   CompetitionResult,
+  ListingType,
   MarketplaceListingWithAgent,
   UserProfile,
 } from "./types"
@@ -338,11 +340,15 @@ export async function enrollAgent(competitionId: string, agentId: string): Promi
 // ── MARKETPLACE ──────────────────────────
 
 interface ListingRow {
+  id: string
   agent_id: string
   listed: boolean
+  listing_type: string
   price: number
   price_unit: string
-  license_type: string
+  billing_model: string
+  code_license: string | null
+  code_path: string | null
   description: string | null
   listed_at: string
   agents: (AgentRow & { profiles: { username: string | null } | null }) | null
@@ -352,10 +358,14 @@ function mapListing(row: ListingRow): MarketplaceListingWithAgent {
   const agent = row.agents as AgentRow
   return {
     agentId: row.agent_id,
+    listingId: row.id,
     listed: row.listed,
+    listingType: (row.listing_type as ListingType) ?? "acceso",
     price: Number(row.price),
     priceUnit: row.price_unit,
-    licenseType: row.license_type,
+    billingModel: (row.billing_model as BillingModel) ?? "mensual",
+    codeLicense: row.code_license,
+    codePath: row.code_path,
     description: row.description ?? "",
     sellerName: row.agents?.profiles?.username ?? "Usuario",
     listedAt: new Date(row.listed_at),
@@ -385,23 +395,94 @@ export async function getListingByAgentId(agentId: string): Promise<MarketplaceL
 
 export async function createListing(input: {
   agentId: string
+  listingType: ListingType
   price: number
   priceUnit: string
-  licenseType: string
+  billingModel: BillingModel
   description: string
+  codeLicense?: string | null
+  codePath?: string | null
+}): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .insert({
+      agent_id: input.agentId,
+      listing_type: input.listingType,
+      price: input.price,
+      price_unit: input.priceUnit,
+      billing_model: input.billingModel,
+      description: input.description,
+      code_license: input.codeLicense ?? null,
+      code_path: input.codePath ?? null,
+    })
+    .select("id")
+    .single()
+  if (error || !data) {
+    console.error("createListing failed", error)
+    return null
+  }
+  return data.id as string
+}
+
+// Sube el código del agente al bucket privado y devuelve su ruta.
+// Solo el dueño puede escribir en su carpeta (RLS de storage).
+export async function uploadAgentCode(
+  userId: string,
+  agentId: string,
+  file: File,
+): Promise<string | null> {
+  const path = `${userId}/${agentId}.zip`
+  const { error } = await supabase.storage
+    .from("agent-code")
+    .upload(path, file, { upsert: true, contentType: "application/zip" })
+  if (error) {
+    console.error("uploadAgentCode failed", error)
+    return null
+  }
+  return path
+}
+
+// ── COMPRAS ──────────────────────────────
+
+// Registra la compra. Aún sin cobro real: deja constancia del derecho de
+// acceso/descarga, que es lo que habilita la RLS del bucket privado.
+export async function purchaseListing(input: {
+  listingId: string
+  buyerId: string
+  price: number
+  priceUnit: string
 }): Promise<boolean> {
-  const { error } = await supabase.from("marketplace_listings").insert({
-    agent_id: input.agentId,
+  const { error } = await supabase.from("purchases").insert({
+    listing_id: input.listingId,
+    buyer_id: input.buyerId,
     price: input.price,
     price_unit: input.priceUnit,
-    license_type: input.licenseType,
-    description: input.description,
   })
+  // Ya la había comprado antes: no es un error para el usuario.
+  if (error && error.code === "23505") return true
   if (error) {
-    console.error("createListing failed", error)
+    console.error("purchaseListing failed", error)
     return false
   }
   return true
+}
+
+// IDs de listados que este usuario ya compró (para mostrar la descarga).
+export async function getPurchasedListingIds(buyerId: string): Promise<string[]> {
+  const { data, error } = await supabase.from("purchases").select("listing_id").eq("buyer_id", buyerId)
+  if (error || !data) return []
+  return data.map((p) => p.listing_id as string)
+}
+
+// URL temporal de descarga del código. Solo funciona si la RLS lo permite
+// (eres el dueño o compraste el listado).
+export async function getCodeDownloadUrl(codePath: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from("agent-code").createSignedUrl(codePath, 60)
+  if (error || !data) {
+    console.error("getCodeDownloadUrl failed", error)
+    return null
+  }
+  return data.signedUrl
 }
 
 // ── PERFIL ────────────────────────────────
@@ -494,15 +575,15 @@ export async function getActivityForUser(ownerId: string): Promise<ActivityEvent
 
   const { data: listings } = await supabase
     .from("marketplace_listings")
-    .select("agent_id, price, price_unit, listed_at")
+    .select("agent_id, price, price_unit, billing_model, listed_at")
     .in("agent_id", agentIds)
 
   listings?.forEach((l) => {
     events.push({
       type: "listed",
       date: new Date(l.listed_at),
-      title: `${nameById.get(l.agent_id)} fue listado en el marketplace`,
-      detail: formatPrice(l.price, l.price_unit),
+      title: `${nameById.get(l.agent_id)} está disponible en el marketplace`,
+      detail: formatListingPrice(l.price, l.price_unit, l.billing_model),
       agentId: l.agent_id,
     })
   })

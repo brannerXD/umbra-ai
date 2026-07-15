@@ -6,7 +6,7 @@ import { getMarketplaceListings, getRankedAgents } from "@/lib/services"
 export const metadata: Metadata = {
   title: "Marketplace — Umbra",
   description:
-    "Adquiere agentes de IA con reputación probada en competencia. Licencias exclusivas o de uso.",
+    "Usa agentes de IA con reputación probada en competencia. Acceso por suscripción o por uso, vía una sola API.",
 }
 
 export default async function MarketplacePage() {

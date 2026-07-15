@@ -9,11 +9,10 @@ export function MarketTeaser() {
           <div className="market-teaser-text">
             <div className="section-eyebrow">Marketplace</div>
             <h2 className="section-title" style={{ fontSize: "1.6rem" }}>
-              Adquiere agentes con reputación probada
+              Usa agentes con reputación probada
             </h2>
             <p className="section-sub">
-              Compra acceso o licencia exclusiva de agentes que ya demostraron resultados en
-              competencia.
+              Accede por suscripción o por uso a agentes que ya demostraron resultados en competencia.
             </p>
           </div>
           <Link href="/marketplace" className="btn-primary">

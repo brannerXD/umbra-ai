@@ -2,14 +2,23 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { CountUp } from "@/components/count-up"
 import { ScoreChart } from "./score-chart"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
-import { formatPrice, formatTime } from "@/lib/umbra"
-import { MIN_COMPS_FOR_CERTIFICATE, archiveAgent, createListing, updateAgentDescription } from "@/lib/services"
-import type { Agent, MarketplaceListingWithAgent } from "@/lib/types"
+import { formatListingPrice, formatTime, getBillingLabel } from "@/lib/umbra"
+import {
+  MIN_COMPS_FOR_CERTIFICATE,
+  archiveAgent,
+  createListing,
+  updateAgentDescription,
+  uploadAgentCode,
+} from "@/lib/services"
+import { CODE_LICENSES } from "@/lib/types"
+import type { Agent, BillingModel, ListingType, MarketplaceListingWithAgent } from "@/lib/types"
+
+const MAX_CODE_BYTES = 25 * 1024 * 1024
 
 const HIST_LIMIT = 5
 
@@ -40,7 +49,11 @@ export function AgenteClient({
   const [descDraft, setDescDraft] = useState(description)
   const [priceDraft, setPriceDraft] = useState("")
   const [priceUnit, setPriceUnit] = useState<"USD" | "COP">("USD")
-  const [licenseDraft, setLicenseDraft] = useState("Licencia exclusiva")
+  const [listingTypeDraft, setListingTypeDraft] = useState<ListingType>("acceso")
+  const [billingDraft, setBillingDraft] = useState<BillingModel>("mensual")
+  const [licenseDraft, setLicenseDraft] = useState<string>(CODE_LICENSES[0])
+  const [codeFile, setCodeFile] = useState<File | null>(null)
+  const codeInputRef = useRef<HTMLInputElement>(null)
   const [publishing, setPublishing] = useState(false)
   const [listAccepted, setListAccepted] = useState(false)
   const [savingDesc, setSavingDesc] = useState(false)
@@ -81,33 +94,66 @@ export function AgenteClient({
       showToast("Ingresa un precio valido.", "warn")
       return
     }
+    const isCode = listingTypeDraft === "codigo"
+    if (isCode && !codeFile) {
+      showToast("Sube el .zip con el código de tu agente.", "warn")
+      return
+    }
+    if (!user) return
+
     setPublishing(true)
-    const description = `Acceso a ${initialAgent.name}, listado por su creador.`
-    const ok = await createListing({
+
+    // El código va a un bucket privado; solo quien compre podrá descargarlo.
+    let codePath: string | null = null
+    if (isCode && codeFile) {
+      codePath = await uploadAgentCode(user.id, initialAgent.id, codeFile)
+      if (!codePath) {
+        setPublishing(false)
+        showToast("No se pudo subir el código. Intenta de nuevo.", "warn")
+        return
+      }
+    }
+
+    const billingModel: BillingModel = isCode ? "unico" : billingDraft
+    const description = isCode
+      ? `Código completo de ${initialAgent.name} — licencia ${licenseDraft}.`
+      : `Acceso a ${initialAgent.name}, listado por su creador.`
+
+    const listingId = await createListing({
       agentId: initialAgent.id,
+      listingType: listingTypeDraft,
       price,
       priceUnit,
-      licenseType: licenseDraft,
+      billingModel,
       description,
+      codeLicense: isCode ? licenseDraft : null,
+      codePath,
     })
     setPublishing(false)
-    if (!ok) {
+    if (!listingId) {
       showToast("No se pudo publicar el listado. Intenta de nuevo.", "warn")
       return
     }
     setListing({
       agentId: initialAgent.id,
+      listingId,
       listed: true,
+      listingType: listingTypeDraft,
       price,
       priceUnit,
-      licenseType: licenseDraft,
+      billingModel,
+      codeLicense: isCode ? licenseDraft : null,
+      codePath,
       description,
       sellerName: user?.email?.split("@")[0] ?? "Usuario",
       listedAt: new Date(),
       agent: initialAgent,
     })
     setListOpen(false)
-    showToast(`${initialAgent.name} fue listado en el marketplace por ${formatPrice(price, priceUnit)}.`, "success")
+    showToast(
+      `${initialAgent.name} está disponible en el marketplace por ${formatListingPrice(price, priceUnit, billingModel)}.`,
+      "success",
+    )
   }
 
   async function confirmArchiveAgent() {
@@ -223,14 +269,16 @@ export function AgenteClient({
           <div className="container">
             <div className="listing-box">
               <div className="listing-info">
-                <div className="section-eyebrow">En venta</div>
+                <div className="section-eyebrow">{getBillingLabel(listing.billingModel)}</div>
                 <h2 className="section-title" style={{ fontSize: "1.5rem" }}>
-                  Este agente esta en el marketplace
+                  Este agente está disponible en el marketplace
                 </h2>
                 <p className="section-sub">{listing.description}</p>
               </div>
               <div className="listing-action">
-                <span className="listing-price">{formatPrice(listing.price, listing.priceUnit)}</span>
+                <span className="listing-price">
+                  {formatListingPrice(listing.price, listing.priceUnit, listing.billingModel)}
+                </span>
                 <Link href="/marketplace" className="btn-primary">
                   <span>Ver en marketplace →</span>
                 </Link>
@@ -394,15 +442,102 @@ export function AgenteClient({
             <button className="modal-close" aria-label="Cerrar" onClick={() => setListOpen(false)}>
               ✕
             </button>
-            <h3 className="modal-title">Listar agente en marketplace</h3>
-            <p className="modal-sub">Define el precio y tipo de licencia para tu agente.</p>
+            <h3 className="modal-title">Publicar en el marketplace</h3>
+            <p className="modal-sub">
+              Puedes ofrecer el <strong>uso</strong> de tu agente vía la API de Umbra, o vender su{" "}
+              <strong>código completo</strong>.
+            </p>
+
             <div className="field-group">
-              <label className="field-label">Precio</label>
+              <label className="field-label">Qué vas a publicar</label>
+              <select
+                className="field-input field-select"
+                value={listingTypeDraft}
+                onChange={(e) => setListingTypeDraft(e.target.value as ListingType)}
+              >
+                <option value="acceso">Acceso vía API — tú lo sigues hospedando</option>
+                <option value="codigo">Código completo — el comprador lo descarga</option>
+              </select>
+              <p className="field-hint">
+                {listingTypeDraft === "codigo"
+                  ? "El comprador descarga tu código y lo corre donde quiera. No hereda tu reputación: la ganó este despliegue, no el archivo."
+                  : "El acceso es no exclusivo y puedes retirarlo cuando quieras. Tu endpoint nunca se expone."}
+              </p>
+            </div>
+
+            {listingTypeDraft === "acceso" ? (
+              <div className="field-group">
+                <label className="field-label">Cómo quieres cobrar</label>
+                <select
+                  className="field-input field-select"
+                  value={billingDraft}
+                  onChange={(e) => setBillingDraft(e.target.value as BillingModel)}
+                >
+                  <option value="mensual">Suscripción mensual</option>
+                  <option value="uso">Por uso (cada 1.000 llamadas)</option>
+                </select>
+              </div>
+            ) : (
+              <>
+                <div className="field-group">
+                  <label className="field-label">Licencia</label>
+                  <select
+                    className="field-input field-select"
+                    value={licenseDraft}
+                    onChange={(e) => setLicenseDraft(e.target.value)}
+                  >
+                    {CODE_LICENSES.map((l) => (
+                      <option key={l} value={l}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Código del agente (.zip)</label>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ width: "100%" }}
+                    onClick={() => codeInputRef.current?.click()}
+                  >
+                    <span>{codeFile ? codeFile.name : "Elegir archivo .zip"}</span>
+                  </button>
+                  <input
+                    ref={codeInputRef}
+                    type="file"
+                    accept=".zip,application/zip"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null
+                      e.target.value = ""
+                      if (f && f.size > MAX_CODE_BYTES) {
+                        showToast("El archivo debe pesar menos de 25MB.", "warn")
+                        return
+                      }
+                      setCodeFile(f)
+                    }}
+                  />
+                  <p className="field-hint">
+                    Máximo 25MB. Se guarda privado: solo quien lo compre podrá descargarlo.
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className="field-group">
+              <label className="field-label">
+                {listingTypeDraft === "codigo"
+                  ? "Precio (pago único)"
+                  : billingDraft === "uso"
+                    ? "Precio por 1.000 llamadas"
+                    : "Precio por mes"}
+              </label>
               <div style={{ display: "flex", gap: 8 }}>
                 <input
                   type="number"
                   className="field-input"
-                  placeholder="99"
+                  placeholder={listingTypeDraft === "codigo" ? "149" : billingDraft === "uso" ? "2.50" : "29"}
                   step="0.01"
                   min="0"
                   value={priceDraft}
@@ -418,17 +553,9 @@ export function AgenteClient({
                   <option value="COP">COP</option>
                 </select>
               </div>
-            </div>
-            <div className="field-group">
-              <label className="field-label">Tipo de licencia</label>
-              <select
-                className="field-input field-select"
-                value={licenseDraft}
-                onChange={(e) => setLicenseDraft(e.target.value)}
-              >
-                <option value="Licencia exclusiva">Licencia exclusiva (transferencia total)</option>
-                <option value="Licencia de uso (no exclusiva)">Licencia de uso (no exclusiva)</option>
-              </select>
+              <p className="field-hint">
+                Umbra le cobra al comprador y te transfiere lo recaudado menos la comisión de la plataforma.
+              </p>
             </div>
             <label className="consent-check">
               <input

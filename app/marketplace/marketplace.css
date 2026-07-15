@@ -79,7 +79,8 @@
   padding: 3px 10px;
 }
 
-.market-card-license.exclusive { color: var(--text); border-color: var(--text); }
+.market-card-license.subscription { color: var(--text); border-color: var(--text); }
+.market-card-license.code { color: var(--orange); border-color: var(--orange); }
 
 .market-card-agent { display: flex; align-items: center; gap: 13px; }
 

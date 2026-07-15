@@ -77,12 +77,34 @@ export interface Competition {
   results: CompetitionResult[]
 }
 
+// Qué se publica en el marketplace:
+//  - "acceso": usar el agente vía la API de Umbra. El creador lo sigue hospedando
+//    y la reputación aplica (es el mismo agente que compitió).
+//  - "codigo": comprar el código del agente completo. Pago único + licencia.
+//    NO hereda la reputación: la ganó ese despliegue, no el archivo.
+export type ListingType = "acceso" | "codigo"
+
+// Cómo se cobra. El acceso siempre es NO exclusivo: el mismo agente se
+// licencia a muchos compradores. "unico" es el pago único del código.
+export type BillingModel = "mensual" | "uso" | "unico"
+
+// Licencia bajo la que se vende el código.
+export type CodeLicense = "Uso personal" | "Comercial" | "MIT"
+
+export const CODE_LICENSES: CodeLicense[] = ["Uso personal", "Comercial", "MIT"]
+
 export interface MarketplaceListing {
   agentId: string
+  listingId: string
   listed: boolean
+  listingType: ListingType
   price: number
   priceUnit: string
-  licenseType: string
+  billingModel: BillingModel
+  /** Solo para listingType "codigo". */
+  codeLicense: string | null
+  /** Ruta en el bucket privado `agent-code`. Solo para listingType "codigo". */
+  codePath: string | null
   description: string
   sellerName: string
   listedAt: Date
