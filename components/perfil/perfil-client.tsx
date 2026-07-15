@@ -1,17 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Avatar } from "@/components/avatar"
+import { AvatarPicker } from "@/components/avatar-picker"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
 import { useNow } from "@/hooks/use-now"
-import { supabase } from "@/lib/supabase"
 import { archiveAgent, getActivityForUser, getAgentsByOwner, getUserProfile, updateProfile } from "@/lib/services"
 import { formatTime } from "@/lib/umbra"
 import type { ActivityEvent, Agent, UserProfile } from "@/lib/types"
-
-const MAX_AVATAR_BYTES = 3 * 1024 * 1024
 
 const COOLDOWN_DAYS = 60
 
@@ -20,7 +18,7 @@ function nextAllowedChange(usernameUpdatedAt: Date): Date {
 }
 
 export function PerfilClient() {
-  const { user, signInWithGoogle } = useAuth()
+  const { user, signInWithGoogle, setAvatarUrl } = useAuth()
   const { showToast } = useToast()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -35,8 +33,7 @@ export function PerfilClient() {
 
   const [archiveTarget, setArchiveTarget] = useState<Agent | null>(null)
   const [archiving, setArchiving] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const now = useNow(60000)
 
@@ -81,47 +78,6 @@ export function PerfilClient() {
     }
     setProfile((p) => (p ? { ...p, bio: bioDraft } : p))
     showToast("Descripción actualizada.", "success")
-  }
-
-  async function onAvatarSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (!file || !user) return
-    if (!file.type.startsWith("image/")) {
-      showToast("Selecciona un archivo de imagen.", "warn")
-      return
-    }
-    if (file.size > MAX_AVATAR_BYTES) {
-      showToast("La imagen debe pesar menos de 3MB.", "warn")
-      return
-    }
-
-    setUploadingAvatar(true)
-    const ext = file.name.split(".").pop() ?? "jpg"
-    const path = `${user.id}/avatar.${ext}`
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, cacheControl: "3600" })
-
-    if (uploadError) {
-      setUploadingAvatar(false)
-      showToast("No se pudo subir la foto.", "warn")
-      return
-    }
-
-    const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(path)
-    const avatarUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
-
-    const { error: dbError } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", user.id)
-    setUploadingAvatar(false)
-    if (dbError) {
-      showToast("No se pudo actualizar la foto de perfil.", "warn")
-      return
-    }
-
-    setProfile((p) => (p ? { ...p, avatarUrl } : p))
-    showToast("Foto de perfil actualizada.", "success")
   }
 
   async function confirmArchive() {
@@ -175,9 +131,8 @@ export function PerfilClient() {
           <button
             type="button"
             className="perfil-avatar-btn"
-            onClick={() => avatarInputRef.current?.click()}
-            disabled={uploadingAvatar}
-            aria-label="Cambiar foto de perfil"
+            onClick={() => setPickerOpen(true)}
+            aria-label="Cambiar avatar"
           >
             {profile.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -185,15 +140,8 @@ export function PerfilClient() {
             ) : (
               <Avatar name={profile.username} size={64} />
             )}
-            <span className="perfil-avatar-overlay">{uploadingAvatar ? "..." : "Cambiar"}</span>
+            <span className="perfil-avatar-overlay">Cambiar</span>
           </button>
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept="image/*"
-            className="perfil-avatar-input"
-            onChange={onAvatarSelected}
-          />
           <div>
             <h1 className="perfil-name">{profile.username}</h1>
             <p className="perfil-email">{profile.email}</p>
@@ -303,6 +251,22 @@ export function PerfilClient() {
           </div>
         </div>
       </section>
+
+      {pickerOpen && (
+        <AvatarPicker
+          userId={user.id}
+          currentUrl={profile.avatarUrl}
+          title="Cambiar avatar"
+          subtitle="Elige un avatar predeterminado o sube tu propia foto."
+          onChosen={(url) => {
+            if (url) {
+              setProfile((p) => (p ? { ...p, avatarUrl: url } : p))
+              setAvatarUrl(url)
+            }
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {archiveTarget && (
         <div className="modal-overlay open" onClick={(ev) => ev.target === ev.currentTarget && setArchiveTarget(null)}>

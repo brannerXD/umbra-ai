@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "./toast-provider"
+import { AvatarPicker } from "./avatar-picker"
 
 // Marca en el navegador que el usuario ya aceptó los términos, para no
 // volver a mostrarle el consentimiento en cada inicio de sesión.
@@ -21,6 +22,8 @@ interface AuthContextValue {
   loading: boolean
   signInWithGoogle: () => void
   signOut: () => void
+  // Actualiza el avatar mostrado en el navbar al instante (tras elegirlo en el perfil).
+  setAvatarUrl: (url: string) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -38,23 +41,55 @@ function toAuthUser(supaUser: { id: string; email?: string | null; user_metadata
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast()
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const [baseUser, setBaseUser] = useState<AuthUser | null>(null)
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
+  const [avatarChosen, setAvatarChosen] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [consentOpen, setConsentOpen] = useState(false)
   const [consentChecked, setConsentChecked] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setUser(toAuthUser(data.session?.user ?? null))
+      setBaseUser(toAuthUser(data.session?.user ?? null))
       setLoading(false)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(toAuthUser(session?.user ?? null))
+      setBaseUser(toAuthUser(session?.user ?? null))
     })
 
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  // El avatar del navbar sale de la tabla profiles (el que el usuario eligió),
+  // con respaldo en la foto de Google si aún no eligió ninguno.
+  const userId = baseUser?.id ?? null
+  useEffect(() => {
+    if (!userId) {
+      setProfileAvatar(null)
+      setAvatarChosen(null)
+      return
+    }
+    let active = true
+    supabase
+      .from("profiles")
+      .select("avatar_url, avatar_chosen")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return
+        setProfileAvatar((data?.avatar_url as string | null) ?? null)
+        setAvatarChosen((data?.avatar_chosen as boolean | null) ?? null)
+      })
+    return () => {
+      active = false
+    }
+  }, [userId])
+
+  // Usuario expuesto: el avatar de profiles tiene prioridad sobre el de Google.
+  const user: AuthUser | null = baseUser
+    ? { ...baseUser, avatarUrl: profileAvatar ?? baseUser.avatarUrl }
+    : null
 
   // Ejecuta el flujo real de OAuth con Google.
   const runGoogleOAuth = useCallback(() => {
@@ -96,8 +131,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     showToast("Sesión cerrada.", "info")
   }, [showToast])
 
+  const setAvatarUrl = useCallback((url: string) => {
+    setProfileAvatar(url)
+  }, [])
+
+  // Marca que el usuario ya pasó por la selección de avatar (se muestra al crear la cuenta).
+  const markAvatarChosen = useCallback(async () => {
+    if (!userId) return
+    setAvatarChosen(true)
+    await supabase.from("profiles").update({ avatar_chosen: true }).eq("id", userId)
+  }, [userId])
+
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, setAvatarUrl }}>
       {children}
       {consentOpen && (
         <div
@@ -140,6 +186,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             </div>
           </div>
         </div>
+      )}
+      {user && avatarChosen === false && (
+        <AvatarPicker
+          userId={user.id}
+          currentUrl={profileAvatar}
+          title="Dale una cara a tu perfil"
+          subtitle="Elige un avatar para tu cuenta. Podrás cambiarlo cuando quieras."
+          skipLabel="Omitir por ahora"
+          onChosen={(url) => {
+            if (url) setProfileAvatar(url)
+          }}
+          onClose={markAvatarChosen}
+        />
       )}
     </AuthContext.Provider>
   )

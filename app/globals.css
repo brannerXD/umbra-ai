@@ -141,6 +141,57 @@ body::before {
   text-underline-offset: 2px;
 }
 
+/* Selector de avatar (predeterminados + subir foto) — usado en onboarding y perfil */
+.avatar-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.avatar-option {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color var(--transition), transform var(--transition);
+}
+.avatar-option img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+.avatar-option:hover { transform: translateY(-2px); border-color: var(--border-2); }
+.avatar-option.selected { border-color: var(--text); }
+.avatar-picker-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 6px 0 12px;
+}
+.avatar-picker-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 16px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.avatar-picker-divider::before,
+.avatar-picker-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.avatar-picker-upload { width: 100%; }
+
 .container {
   max-width: 1180px;
   margin: 0 auto;
