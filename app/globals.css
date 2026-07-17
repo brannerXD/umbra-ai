@@ -161,6 +161,7 @@ body::before {
   top: 0;
   height: 100%;
   width: 50%;
+  background: var(--surface); /* opaco: el formulario de encima tapa al de atrás al deslizar */
   transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
 }
 .auth-signin { left: 0; z-index: 2; }
@@ -204,10 +205,8 @@ body::before {
   height: 100%;
   transform: translateX(0);
   transition: transform 0.6s ease-in-out;
-  color: #F5F5F0;
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgba(201, 162, 75, 0.18), transparent 60%),
-    linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  color: var(--bg);
+  background: linear-gradient(150deg, var(--text) 0%, color-mix(in srgb, var(--text) 90%, var(--bg)) 100%);
 }
 .right-active .auth-overlay { transform: translateX(50%); }
 
@@ -238,7 +237,10 @@ body::before {
   pointer-events: none;
   transform: translate(-50%, -50%) rotate(-6deg);
   animation: auth-float 7s ease-in-out infinite;
+  opacity: 0.1;
+  filter: invert(1); /* tema oscuro: panel claro → logo oscuro */
 }
+[data-theme="light"] .auth-ov-float { filter: none; } /* tema claro: panel oscuro → logo blanco */
 @keyframes auth-float {
   0%, 100% { transform: translate(-50%, -56%) rotate(-6deg); }
   50% { transform: translate(-50%, -44%) rotate(-6deg); }
@@ -252,14 +254,14 @@ body::before {
 .auth-ov-right { right: 0; transform: translateX(0); }
 .right-active .auth-ov-right { transform: translateX(20%); }
 
-.auth-ov-word { color: #F5F5F0; opacity: 0.85; }
-.auth-ov-h { font-family: var(--font-display); font-size: 1.3rem; font-weight: 500; color: #F5F5F0; margin: 14px 0 8px; }
-.auth-ov-p { font-size: 0.86rem; line-height: 1.55; color: rgba(245, 245, 240, 0.7); margin: 0; max-width: 240px; }
+.auth-ov-word { color: var(--bg); opacity: 0.8; }
+.auth-ov-h { font-family: var(--font-display); font-size: 1.3rem; font-weight: 500; color: var(--bg); margin: 14px 0 8px; }
+.auth-ov-p { font-size: 0.86rem; line-height: 1.55; color: color-mix(in srgb, var(--bg) 72%, transparent); margin: 0; max-width: 240px; }
 .auth-ov-btn {
   margin-top: 22px;
   background: transparent;
-  border: 1px solid rgba(245, 245, 240, 0.45);
-  color: #F5F5F0;
+  border: 1px solid color-mix(in srgb, var(--bg) 45%, transparent);
+  color: var(--bg);
   border-radius: 100px;
   padding: 11px 32px;
   font-size: 0.86rem;
@@ -267,7 +269,7 @@ body::before {
   cursor: pointer;
   transition: background 0.25s, border-color 0.25s;
 }
-.auth-ov-btn:hover { background: rgba(245, 245, 240, 0.09); border-color: #F5F5F0; }
+.auth-ov-btn:hover { background: color-mix(in srgb, var(--bg) 10%, transparent); border-color: var(--bg); }
 
 /* Interruptor de modo en móvil (el overlay se oculta ahí) */
 .auth-mobile-switch {
@@ -352,7 +354,8 @@ body::before {
 }
 .auth-divider span { font-size: 0.72rem; font-family: var(--font-mono); }
 
-.auth-google { width: 100%; justify-content: center; }
+.auth-google { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.google-g { flex-shrink: 0; }
 
 .auth-link-btn {
   background: none;
