@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useAuth } from "./auth-provider"
 
 export function AuthButton() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth()
+  const { user, loading, openAuth, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
 
   if (loading) return <button className="btn-wallet" disabled>···</button>
@@ -41,8 +41,8 @@ export function AuthButton() {
   }
 
   return (
-    <button className="btn-wallet" onClick={signInWithGoogle}>
-      Iniciar sesión con Google
+    <button className="btn-wallet" onClick={() => openAuth("signin")}>
+      Iniciar sesión
     </button>
   )
 }

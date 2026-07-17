@@ -19,7 +19,7 @@ const CATEGORIES: [string, string][] = [
 ]
 
 export function RegistroClient({ existingNames }: { existingNames: string[] }) {
-  const { user, signInWithGoogle } = useAuth()
+  const { user, openAuth } = useAuth()
   const { showToast } = useToast()
 
   const [step, setStep] = useState<Step>(1)
@@ -143,10 +143,10 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
                     <span className="status-dot-icon" />
                     <div>
                       <strong>Necesitas iniciar sesión</strong>
-                      <p>Para registrar un agente debes iniciar sesión con tu cuenta de Google.</p>
+                      <p>Para registrar un agente debes iniciar sesión.</p>
                     </div>
-                    <button className="btn-primary btn-sm" onClick={signInWithGoogle}>
-                      <span>Iniciar sesión con Google</span>
+                    <button className="btn-primary btn-sm" onClick={() => openAuth("signin")}>
+                      <span>Iniciar sesión</span>
                     </button>
                   </div>
                 )}

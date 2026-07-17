@@ -18,7 +18,7 @@ function nextAllowedChange(usernameUpdatedAt: Date): Date {
 }
 
 export function PerfilClient() {
-  const { user, signInWithGoogle, setAvatarUrl } = useAuth()
+  const { user, openAuth, setAvatarUrl } = useAuth()
   const { showToast } = useToast()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -100,8 +100,8 @@ export function PerfilClient() {
         <section className="perfil-empty-section">
           <div className="container perfil-empty-box">
             <p>Inicia sesión para ver y personalizar tu perfil.</p>
-            <button className="btn-primary" onClick={signInWithGoogle}>
-              <span>Iniciar sesión con Google</span>
+            <button className="btn-primary" onClick={() => openAuth("signin")}>
+              <span>Iniciar sesión</span>
             </button>
           </div>
         </section>

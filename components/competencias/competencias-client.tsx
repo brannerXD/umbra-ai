@@ -40,7 +40,7 @@ export function CompetenciasClient({
   allAgents: Agent[]
 }) {
   const router = useRouter()
-  const { user, signInWithGoogle } = useAuth()
+  const { user, openAuth } = useAuth()
   const { showToast } = useToast()
   const [status, setStatus] = useState<StatusFilter>("all")
   const [cat, setCat] = useState<CatFilter>("all")
@@ -59,7 +59,7 @@ export function CompetenciasClient({
 
   const handleEnroll = (comp: Competition) => {
     if (!user) {
-      signInWithGoogle()
+      openAuth("signin")
       showToast("Inicia sesión primero para inscribir un agente.", "warn")
       return
     }

@@ -19,7 +19,7 @@ const PTS_BY_POS = [10, 4, 2, 2, 2]
 
 export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgents: Agent[] }) {
   const router = useRouter()
-  const { user, isAdmin, signInWithGoogle } = useAuth()
+  const { user, isAdmin, openAuth } = useAuth()
   const { showToast } = useToast()
   const [starting, setStarting] = useState(false)
   const [enrollOpen, setEnrollOpen] = useState(false)
@@ -29,7 +29,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
 
   function handleEnrollClick() {
     if (!user) {
-      signInWithGoogle()
+      openAuth("signin")
       return
     }
     if (myAgents.length === 0) {

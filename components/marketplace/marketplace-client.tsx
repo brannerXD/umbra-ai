@@ -27,7 +27,7 @@ export function MarketplaceClient({
   listings: MarketplaceListingWithAgent[]
   ranking: Agent[]
 }) {
-  const { user, signInWithGoogle } = useAuth()
+  const { user, openAuth } = useAuth()
   const { showToast } = useToast()
 
   const [listings] = useState(initialListings)
@@ -76,7 +76,7 @@ export function MarketplaceClient({
 
   function openPurchase(listing: MarketplaceListingWithAgent) {
     if (!user) {
-      signInWithGoogle()
+      openAuth("signin")
       showToast("Inicia sesión primero para adquirir un agente.", "warn")
       return
     }
