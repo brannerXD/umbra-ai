@@ -15,7 +15,7 @@ const CORS_HEADERS = {
 
 const AGENT_TIMEOUT_MS = 10000
 const GROQ_MODEL = "llama-3.3-70b-versatile"        // juez de respaldo
-const GEMINI_MODEL = "gemini-2.0-flash"             // juez principal (free tier: 1500 solicitudes/día)
+const GEMINI_MODEL = "gemini-flash-lite-latest"     // juez principal (el que tiene free tier en esta cuenta)
 
 // ─── Protección SSRF ──────────────────────────────────────────────────────────
 // Impide que el endpoint de un agente apunte a la red interna, loopback,
