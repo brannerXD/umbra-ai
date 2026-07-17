@@ -20,6 +20,7 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
+  isAdmin: boolean
   signInWithGoogle: () => void
   signOut: () => void
   // Actualiza el avatar mostrado en el navbar al instante (tras elegirlo en el perfil).
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [baseUser, setBaseUser] = useState<AuthUser | null>(null)
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
   const [avatarChosen, setAvatarChosen] = useState<boolean | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [consentOpen, setConsentOpen] = useState(false)
   const [consentChecked, setConsentChecked] = useState(false)
@@ -68,18 +70,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userId) {
       setProfileAvatar(null)
       setAvatarChosen(null)
+      setIsAdmin(false)
       return
     }
     let active = true
     supabase
       .from("profiles")
-      .select("avatar_url, avatar_chosen")
+      .select("avatar_url, avatar_chosen, is_admin")
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {
         if (!active) return
         setProfileAvatar((data?.avatar_url as string | null) ?? null)
         setAvatarChosen((data?.avatar_chosen as boolean | null) ?? null)
+        setIsAdmin((data?.is_admin as boolean | null) ?? false)
       })
     return () => {
       active = false
@@ -143,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId])
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, setAvatarUrl }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin: isAdmin && !!user, signInWithGoogle, signOut, setAvatarUrl }}>
       {children}
       {consentOpen && (
         <div

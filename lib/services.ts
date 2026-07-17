@@ -337,6 +337,69 @@ export async function enrollAgent(competitionId: string, agentId: string): Promi
   return true
 }
 
+// Resumen para el panel de administración. Lo calcula la función SECURITY
+// DEFINER `admin_stats` (solo admins). Una sola llamada trae todo.
+export interface AdminStats {
+  usersTotal: number
+  usersLast7d: number
+  agentsTotal: number
+  competitionsTotal: number
+  evaluationsTotal: number
+  listingsTotal: number
+  purchasesTotal: number
+  certificatesTotal: number
+  competitionsByStatus: Record<string, number>
+  listingsByType: Record<string, number>
+  agentsByCategory: { label: string; value: number }[]
+  topAgents: { label: string; value: number }[]
+}
+
+export async function getAdminStats(): Promise<AdminStats | null> {
+  const { data, error } = await supabase.rpc("admin_stats")
+  if (error || !data) {
+    console.error("getAdminStats failed", error)
+    return null
+  }
+  const d = data as Record<string, unknown>
+  return {
+    usersTotal: Number(d.users_total ?? 0),
+    usersLast7d: Number(d.users_last_7d ?? 0),
+    agentsTotal: Number(d.agents_total ?? 0),
+    competitionsTotal: Number(d.competitions_total ?? 0),
+    evaluationsTotal: Number(d.evaluations_total ?? 0),
+    listingsTotal: Number(d.listings_total ?? 0),
+    purchasesTotal: Number(d.purchases_total ?? 0),
+    certificatesTotal: Number(d.certificates_total ?? 0),
+    competitionsByStatus: (d.competitions_by_status as Record<string, number>) ?? {},
+    listingsByType: (d.listings_by_type as Record<string, number>) ?? {},
+    agentsByCategory: (d.agents_by_category as { label: string; value: number }[]) ?? [],
+    topAgents: (d.top_agents as { label: string; value: number }[]) ?? [],
+  }
+}
+
+// Crea y publica una competencia. Solo admins: la validación real la hace la
+// función SECURITY DEFINER `create_competition` en la base (RLS bloquea el
+// insert directo). Devuelve el id de la competencia o null si falla.
+export async function createCompetition(input: {
+  title: string
+  category: Category
+  prompt: string
+  agentsMax: number
+}): Promise<string | null> {
+  const { data, error } = await supabase.rpc("create_competition", {
+    p_title: input.title,
+    p_category: input.category,
+    p_category_label: getCategoryLabel(input.category),
+    p_prompt: input.prompt,
+    p_agents_max: input.agentsMax,
+  })
+  if (error) {
+    console.error("createCompetition failed", error)
+    return null
+  }
+  return data as string
+}
+
 // ── MARKETPLACE ──────────────────────────
 
 interface ListingRow {

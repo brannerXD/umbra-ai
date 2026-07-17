@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ThemeToggle } from "./theme-toggle"
 import { AuthButton } from "./auth-button"
+import { useAuth } from "./auth-provider"
 
 const LINKS = [
   { href: "/competencias", label: "Competencias" },
@@ -14,6 +15,7 @@ const LINKS = [
 
 export function Navbar() {
   const pathname = usePathname()
+  const { isAdmin } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -46,6 +48,15 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`nav-link nav-link-admin ${isActive("/admin") ? "active" : ""}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Admin
+            </Link>
+          )}
         </div>
         <div className="nav-right">
           <ThemeToggle />

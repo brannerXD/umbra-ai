@@ -19,7 +19,7 @@ const PTS_BY_POS = [10, 4, 2, 2, 2]
 
 export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgents: Agent[] }) {
   const router = useRouter()
-  const { user, signInWithGoogle } = useAuth()
+  const { user, isAdmin, signInWithGoogle } = useAuth()
   const { showToast } = useToast()
   const [starting, setStarting] = useState(false)
   const [enrollOpen, setEnrollOpen] = useState(false)
@@ -90,7 +90,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
               <span className="lock-dot" />
               <p>El prompt se revelará cuando comience la competencia.</p>
             </div>
-            {comp.agentsEnrolled > 0 && (
+            {isAdmin && comp.agentsEnrolled > 0 && (
               <button
                 className="btn-primary"
                 style={{ marginTop: 16 }}
