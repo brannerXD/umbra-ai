@@ -735,6 +735,44 @@ body::before {
 .btn-wallet.connected { border-color: var(--border-2); color: var(--text-2); }
 .btn-wallet.connected:hover { background: transparent; border-color: var(--text); color: var(--text); }
 
+/* ————— Feedback táctil instantáneo al presionar (evita el doble clic) —————
+   :active se dispara en el primer frame del clic/toque, sin esperar a JS.
+   touch-action: manipulation elimina el retardo de 300 ms en móvil. */
+button,
+a.btn-primary,
+.btn-ghost,
+.btn-wallet,
+.docs-cta,
+.auth-google {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* la vuelta a su sitio se anima suave; el ghost/wallet no llevaban transform */
+.btn-ghost { transition: border-color var(--transition), color var(--transition), transform 0.12s var(--ease); }
+.btn-wallet { transition: background var(--transition), color var(--transition), transform 0.12s var(--ease); }
+
+button:active:not(:disabled):not([aria-disabled="true"]),
+a.btn-primary:active,
+.btn-ghost:active:not(:disabled),
+.btn-wallet:active,
+.docs-cta:active,
+.auth-google:active:not(:disabled) {
+  transform: scale(0.96);
+  transition-duration: 0.04s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active,
+  a.btn-primary:active,
+  .btn-ghost:active,
+  .btn-wallet:active,
+  .docs-cta:active,
+  .auth-google:active {
+    transform: none;
+  }
+}
+
 .auth-menu-wrap { position: relative; }
 .auth-avatar { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
 .auth-menu {
