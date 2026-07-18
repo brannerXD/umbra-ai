@@ -1,0 +1,286 @@
+/* ========================================
+   UMBRA — DOCUMENTACIÓN
+   Estética alineada con las páginas legales.
+   ======================================== */
+
+.docs {
+  padding: calc(var(--nav-h) + 48px) 0 96px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.docs-inner {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+  max-width: 940px;
+}
+
+/* ————— Índice lateral ————— */
+.docs-index {
+  position: sticky;
+  top: calc(var(--nav-h) + 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.docs-index-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 12px;
+}
+
+.docs-index a {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
+  text-decoration: none;
+  padding: 5px 0;
+  transition: color var(--transition);
+}
+
+.docs-index a:hover {
+  color: var(--text);
+}
+
+/* ————— Cabecera ————— */
+.docs-head {
+  padding-bottom: 32px;
+  margin-bottom: 44px;
+  border-bottom: 1px solid var(--border);
+}
+
+.docs-kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 14px;
+}
+
+.docs-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+}
+
+.docs-lead {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-2);
+  max-width: 60ch;
+}
+
+/* ————— Secciones ————— */
+.docs-section {
+  margin-bottom: 52px;
+  scroll-margin-top: calc(var(--nav-h) + 24px);
+}
+
+.docs-section h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 23px;
+  letter-spacing: -0.01em;
+  margin-bottom: 18px;
+  color: var(--text);
+}
+
+.docs-section h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 17px;
+  margin: 26px 0 12px;
+  color: var(--text);
+}
+
+.docs-section p {
+  font-size: 15.5px;
+  line-height: 1.72;
+  color: var(--text-2);
+  margin-bottom: 14px;
+}
+
+.docs-section p:last-child {
+  margin-bottom: 0;
+}
+
+.docs-section strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Tarjetas de concepto (cómo funciona) */
+.docs-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.docs-card {
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.docs-card-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+.docs-card h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 15.5px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.docs-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Pasos de tutorial */
+.docs-steps {
+  list-style: none;
+  counter-reset: docstep;
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.docs-steps > li {
+  counter-increment: docstep;
+  position: relative;
+  padding: 0 0 24px 46px;
+  margin: 0;
+}
+
+.docs-steps > li::before {
+  content: counter(docstep);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 50%;
+}
+
+/* línea que une los pasos */
+.docs-steps > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 34px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--border);
+}
+
+.docs-steps > li h3 {
+  margin: 4px 0 6px;
+  font-size: 16px;
+}
+
+.docs-steps > li p {
+  font-size: 15px;
+  margin-bottom: 0;
+}
+
+/* Nota / aviso */
+.docs-note {
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-2);
+  border-radius: var(--radius);
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--text-2);
+  margin-top: 18px;
+}
+
+/* Enlaces */
+.docs a:not(.docs-index a):not(.docs-cta) {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border-2);
+  transition: text-decoration-color var(--transition);
+}
+
+.docs a:not(.docs-index a):not(.docs-cta):hover {
+  text-decoration-color: var(--text);
+}
+
+/* Botón CTA */
+.docs-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 11px 20px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--invert);
+  background: var(--text);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: opacity var(--transition);
+}
+
+.docs-cta:hover {
+  opacity: 0.85;
+}
+
+/* Pie */
+.docs-foot {
+  margin-top: 24px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.docs-foot a {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--text-2);
+}
+
+.docs-foot a:hover {
+  color: var(--text);
+}
+
+/* ————— Responsive ————— */
+@media (max-width: 860px) {
+  .docs-inner {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .docs-index {
+    display: none;
+  }
+}
