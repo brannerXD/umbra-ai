@@ -93,6 +93,22 @@ export type CodeLicense = "Uso personal" | "Comercial" | "MIT"
 
 export const CODE_LICENSES: CodeLicense[] = ["Uso personal", "Comercial", "MIT"]
 
+// Estado de una compra. Hoy toda compra queda "completada" (sin cobro real,
+// como el resto del marketplace); el campo deja listo el flujo para pagos.
+export type PurchaseStatus = "pendiente" | "completada" | "reembolsada"
+
+// Una versión publicada del código de un Agente Completo (v1.0, v1.1, v2.0...).
+// Cada versión conserva su propio ZIP inmutable, así las compras viejas siguen
+// pudiendo descargar exactamente lo que compraron.
+export interface AgentVersion {
+  id: string
+  listingId: string
+  version: string
+  codePath: string
+  changelog: string | null
+  createdAt: Date
+}
+
 export interface MarketplaceListing {
   agentId: string
   listingId: string
@@ -103,15 +119,57 @@ export interface MarketplaceListing {
   billingModel: BillingModel
   /** Solo para listingType "codigo". */
   codeLicense: string | null
-  /** Ruta en el bucket privado `agent-code`. Solo para listingType "codigo". */
+  /** Ruta en el bucket privado `agent-code` (apunta a la última versión). Solo "codigo". */
   codePath: string | null
   description: string
   sellerName: string
   listedAt: Date
+  // ── Metadata extendida ──
+  /** Imagen de producto (URL pública del bucket `agent-images`). */
+  imageUrl: string | null
+  /** Documentación / guía de uso. */
+  documentation: string | null
+  /** Modelos compatibles — sobre todo para listados "acceso" (URL). */
+  compatibleModels: string[] | null
+  /** Repositorio Git opcional — para "codigo". */
+  gitRepo: string | null
+  /** Tecnologías utilizadas — para "codigo". */
+  technologies: string[] | null
+  /** Dependencias (texto libre / requirements) — para "codigo". */
+  dependencies: string | null
+  /** README del proyecto — para "codigo". */
+  readme: string | null
 }
 
 export interface MarketplaceListingWithAgent extends MarketplaceListing {
   agent: Agent
+}
+
+// Un agente que el usuario COMPRÓ (para "Mis Agentes Comprados").
+export interface PurchasedAgent {
+  purchaseId: string
+  listing: MarketplaceListingWithAgent
+  status: PurchaseStatus
+  purchasedAt: Date
+  /** Versión que compró (string), o null para listados "acceso". */
+  boughtVersion: string | null
+  /** Última versión publicada del agente. */
+  latestVersion: string | null
+  /** Hay una versión más nueva que la que compró. */
+  hasUpdate: boolean
+  /** Todas las versiones disponibles (para descargar la que corresponda). */
+  versions: AgentVersion[]
+}
+
+// Métricas del panel del vendedor (las calcula la función `seller_stats`).
+export interface SellerStats {
+  listingsTotal: number
+  salesTotal: number
+  revenueTotal: number
+  downloadsTotal: number
+  buyers: { buyer: string; agent: string; price: number; priceUnit: string; status: string; at: string }[]
+  topVersion: { version: string; downloads: number } | null
+  salesByAgent: { label: string; value: number }[]
 }
 
 export interface UserProfile {
