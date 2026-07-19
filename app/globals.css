@@ -618,6 +618,24 @@ body::before {
 
 .theme-toggle svg { width: 16px; height: 16px; }
 
+.nav-settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), transform var(--transition);
+}
+
+.nav-settings:hover { border-color: var(--text); color: var(--text); transform: rotate(40deg); }
+.nav-settings.active { border-color: var(--text); color: var(--text); }
+.nav-settings svg { width: 16px; height: 16px; }
+
 .nav-hamburger {
   display: none;
   flex-direction: column;
