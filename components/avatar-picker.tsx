@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { UploadCloud } from "lucide-react"
 import { useToast } from "@/components/toast-provider"
 import { supabase } from "@/lib/supabase"
 
@@ -39,6 +40,7 @@ export function AvatarPicker({
 }: AvatarPickerProps) {
   const { showToast } = useToast()
   const [uploading, setUploading] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function persistAvatar(url: string): Promise<boolean> {
@@ -57,10 +59,8 @@ export function AvatarPicker({
     }
   }
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (!file) return
+  async function processFile(file: File) {
+    if (uploading) return
     if (!file.type.startsWith("image/")) {
       showToast("Selecciona un archivo de imagen.", "warn")
       return
@@ -88,6 +88,19 @@ export function AvatarPicker({
       onChosen(url)
       onClose()
     }
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (file) processFile(file)
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) processFile(file)
   }
 
   return (
@@ -119,8 +132,27 @@ export function AvatarPicker({
           <span>o</span>
         </div>
 
-        <button type="button" className="btn-ghost avatar-picker-upload" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          <span>{uploading ? "Subiendo..." : "Subir una foto"}</span>
+        <button
+          type="button"
+          className={`avatar-dropzone${dragging ? " dragging" : ""}${uploading ? " busy" : ""}`}
+          onClick={() => !uploading && fileRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault()
+            if (!uploading) setDragging(true)
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault()
+            setDragging(false)
+          }}
+          onDrop={onDrop}
+          disabled={uploading}
+          aria-label="Arrastra una foto o haz clic para subir"
+        >
+          <UploadCloud className="avatar-dropzone-icon" aria-hidden />
+          <span className="avatar-dropzone-title">
+            {uploading ? "Subiendo..." : "Arrastra una foto aquí"}
+          </span>
+          {!uploading && <span className="avatar-dropzone-hint">o haz clic para explorar · JPG, PNG · máx 3MB</span>}
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onFile} />
 
