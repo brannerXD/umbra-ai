@@ -7,7 +7,7 @@ import { Avatar } from "@/components/avatar"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
 import { getCategoryLabel, formatListingPrice, getBillingLabel } from "@/lib/umbra"
-import { getCodeDownloadUrl, getPurchasedListingIds, purchaseListing } from "@/lib/services"
+import { getAgentVersions, getCodeDownloadUrl, getPurchasedListingIds, purchaseListing } from "@/lib/services"
 import type { MarketplaceListingWithAgent, Agent } from "@/lib/types"
 
 type SortKey = "score-desc" | "price-asc" | "price-desc" | "recent"
@@ -87,6 +87,12 @@ export function MarketplaceClient({
   async function confirmPurchase() {
     if (!selected || !user) return
     setProcessing(true)
+    // Para el código, registramos qué versión se compró (la última publicada).
+    let versionId: string | null = null
+    if (selected.listingType === "codigo") {
+      const versions = await getAgentVersions(selected.listingId)
+      versionId = versions[0]?.id ?? null
+    }
     // Sin cobro real todavía, pero la compra sí se registra: es lo que habilita
     // la descarga del código (la RLS del bucket privado la exige).
     const ok = await purchaseListing({
@@ -94,6 +100,7 @@ export function MarketplaceClient({
       buyerId: user.id,
       price: selected.price,
       priceUnit: selected.priceUnit,
+      versionId,
     })
     setProcessing(false)
     if (!ok) {
@@ -114,7 +121,7 @@ export function MarketplaceClient({
 
   async function downloadCode(listing: MarketplaceListingWithAgent) {
     if (!listing.codePath) return
-    const url = await getCodeDownloadUrl(listing.codePath)
+    const url = await getCodeDownloadUrl(listing.codePath, { listingId: listing.listingId })
     if (!url) {
       showToast("No se pudo generar el enlace de descarga.", "warn")
       return

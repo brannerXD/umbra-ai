@@ -1026,6 +1026,55 @@ a.btn-primary:active,
 
 .modal-lg { max-width: 540px; }
 
+/* ————— Modal de publicación (Licencia por URL / Agente Completo) ————— */
+.sell-modal {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  max-height: min(86vh, 760px);
+}
+
+.sell-modal-body {
+  overflow-y: auto;
+  margin: 4px -8px 0;
+  padding: 4px 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sell-type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sell-type-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.sell-type-opt:hover { border-color: var(--border-2); }
+.sell-type-opt.active { border-color: var(--text); background: var(--surface-2); }
+
+.sell-type-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.sell-type-desc { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-3); }
+
+.sell-textarea {
+  resize: vertical;
+  min-height: 62px;
+  line-height: 1.5;
+  font-family: var(--font-sans);
+}
+
 .modal-close {
   position: absolute;
   top: 18px; right: 18px;

@@ -27,6 +27,12 @@ export function AuthButton() {
             <Link href="/perfil" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
               {t("auth.profile")}
             </Link>
+            <Link href="/mis-compras" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
+              {t("auth.purchases")}
+            </Link>
+            <Link href="/vendedor" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
+              {t("auth.seller")}
+            </Link>
             <Link href="/configuracion" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
               {t("auth.settings")}
             </Link>

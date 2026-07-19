@@ -1,0 +1,318 @@
+/* ========================================
+   UMBRA — MIS AGENTES COMPRADOS
+   ======================================== */
+
+.compras {
+  padding: calc(var(--nav-h) + 40px) 0 96px;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 70vh;
+}
+
+.compras-head {
+  margin-bottom: 32px;
+}
+
+.compras-kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 12px;
+}
+
+.compras-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+}
+
+.compras-subtitle {
+  font-size: 15px;
+  color: var(--text-2);
+  max-width: 60ch;
+}
+
+/* Vacío / cargando */
+.compras-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--text-2);
+  border: 1px dashed var(--border-2);
+  border-radius: var(--radius-xl, 16px);
+  background: var(--surface);
+}
+
+/* Resumen */
+.compras-summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.compras-stat {
+  flex: 1;
+  min-width: 120px;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.compras-stat-num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.compras-stat-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Grid de tarjetas */
+.compras-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.compra-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color var(--transition);
+}
+
+.compra-card:hover { border-color: var(--border-2); }
+
+.compra-card-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.compra-card-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.compra-card-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.compra-card-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+
+.compra-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.compra-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+}
+
+.compra-badge svg { width: 11px; height: 11px; }
+.compra-badge-code { border-color: var(--text); color: var(--text); }
+.compra-badge-update {
+  border-color: color-mix(in srgb, var(--text) 40%, transparent);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.compra-card-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.compra-card-meta strong { color: var(--text-2); font-weight: 600; }
+
+.compra-card-date {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.compra-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.compra-access-note {
+  font-size: 13px;
+  color: var(--text-2);
+  align-self: center;
+}
+
+/* Modal de detalles */
+.compra-modal {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  max-height: min(86vh, 720px);
+}
+
+.compra-git { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+
+.compra-tech-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+
+.compra-tech {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+.compra-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+
+.compra-tab {
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.compra-tab:hover { color: var(--text-2); }
+.compra-tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+.compra-tab-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.compra-doc {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0;
+}
+
+.compra-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compra-version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.compra-version-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.compra-version-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.compra-version-tag {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  color: var(--text-3);
+}
+.compra-version-tag.latest { border-color: var(--text); color: var(--text); }
+
+.compra-version-log {
+  font-size: 12px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .compras-summary { gap: 8px; }
+  .compras-stat { min-width: 90px; padding: 14px; }
+}

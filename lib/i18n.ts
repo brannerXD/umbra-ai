@@ -28,6 +28,8 @@ const es = {
   "auth.signout": "Cerrar sesión",
   "auth.profile": "Mi perfil",
   "auth.settings": "Configuración",
+  "auth.purchases": "Mis Agentes Comprados",
+  "auth.seller": "Panel del vendedor",
 
   // Tema
   "theme.toggle": "Cambiar tema",
@@ -99,6 +101,8 @@ const en: Record<TKey, string> = {
   "auth.signout": "Sign out",
   "auth.profile": "My profile",
   "auth.settings": "Settings",
+  "auth.purchases": "My Purchased Agents",
+  "auth.seller": "Seller dashboard",
 
   "theme.toggle": "Toggle theme",
 
