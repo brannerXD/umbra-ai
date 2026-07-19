@@ -260,7 +260,8 @@ export async function registerAgent(input: {
   name: string
   description: string
   category: Category
-  endpoint: string
+  // Opcional: los agentes que solo se venden como código no necesitan endpoint.
+  endpoint?: string | null
   ownerId: string
 }): Promise<Agent | null> {
   const { data, error } = await supabase
@@ -270,7 +271,7 @@ export async function registerAgent(input: {
       description: input.description,
       category: input.category,
       category_label: getCategoryLabel(input.category),
-      endpoint: input.endpoint,
+      endpoint: input.endpoint ?? null,
       owner_id: input.ownerId,
       verified: true,
     })

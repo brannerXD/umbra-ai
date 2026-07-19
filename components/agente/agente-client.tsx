@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { CountUp } from "@/components/count-up"
 import { ScoreChart } from "./score-chart"
 import { useAuth } from "@/components/auth-provider"
@@ -39,10 +39,13 @@ export function AgenteClient({
   agent: initialAgent,
   rankPosition,
   listing: initialListing,
+  autoSellCode = false,
 }: {
   agent: Agent
   rankPosition: number
   listing: MarketplaceListingWithAgent | null
+  /** Abre el modal de publicación ya en modalidad "Agente Completo". */
+  autoSellCode?: boolean
 }) {
   const router = useRouter()
   const { user } = useAuth()
@@ -88,6 +91,16 @@ export function AgenteClient({
   const [archiving, setArchiving] = useState(false)
 
   const isOwner = !!user && initialAgent.ownerId === user.id
+
+  // Al venir del registro con "vender el código", abrimos el modal ya configurado.
+  const autoOpened = useRef(false)
+  useEffect(() => {
+    if (autoOpened.current || !autoSellCode || !isOwner || listing) return
+    autoOpened.current = true
+    setListingTypeDraft("codigo")
+    setListAccepted(false)
+    setListOpen(true)
+  }, [autoSellCode, isOwner, listing])
 
   const winPts = initialAgent.wins * 10
   const partPts = initialAgent.comps * 2
