@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
 import { getCategoryLabel, formatListingPrice, getBillingLabel } from "@/lib/umbra"
 import { getAgentVersions, getCodeDownloadUrl, getPurchasedListingIds, purchaseListing } from "@/lib/services"
-import type { MarketplaceListingWithAgent, Agent } from "@/lib/types"
+import type { AgentVersion, MarketplaceListingWithAgent, Agent } from "@/lib/types"
 
 type SortKey = "score-desc" | "price-asc" | "price-desc" | "recent"
 
@@ -18,6 +18,14 @@ const FILTERS = [
   { key: "codigo", label: "Código" },
   { key: "prediccion", label: "Predicción" },
   { key: "razonamiento", label: "Razonamiento" },
+]
+
+// Secciones por modalidad de venta.
+type SaleType = "all" | "codigo" | "acceso"
+const TYPE_TABS: { key: SaleType; label: string; hint: string }[] = [
+  { key: "all", label: "Todos", hint: "Licencias por URL y agentes completos" },
+  { key: "codigo", label: "Agentes Completos", hint: "Compra el código fuente y ejecútalo tú" },
+  { key: "acceso", label: "Licencias", hint: "Usa el agente vía la API de Umbra" },
 ]
 
 export function MarketplaceClient({
@@ -31,12 +39,17 @@ export function MarketplaceClient({
   const { showToast } = useToast()
 
   const [listings] = useState(initialListings)
+  const [typeFilter, setTypeFilter] = useState<SaleType>("all")
   const [filter, setFilter] = useState("all")
   const [sort, setSort] = useState<SortKey>("score-desc")
   const [selected, setSelected] = useState<MarketplaceListingWithAgent | null>(null)
   const [processing, setProcessing] = useState(false)
   const [buyAccepted, setBuyAccepted] = useState(false)
   const [purchasedIds, setPurchasedIds] = useState<string[]>([])
+  // Ficha pública "Ver detalles"
+  const [details, setDetails] = useState<MarketplaceListingWithAgent | null>(null)
+  const [detailsTab, setDetailsTab] = useState<"readme" | "docs" | "deps" | "versiones">("readme")
+  const [detailVersions, setDetailVersions] = useState<AgentVersion[]>([])
 
   // Qué ya compró este usuario (habilita la descarga del código / marca el acceso activo).
   useEffect(() => {
@@ -63,8 +76,9 @@ export function MarketplaceClient({
   }, [listings])
 
   const visible = useMemo(() => {
-    let result = filter === "all" ? listings : listings.filter((l) => l.agent.category === filter)
-    result = [...result]
+    let result = [...listings]
+    if (typeFilter !== "all") result = result.filter((l) => l.listingType === typeFilter)
+    if (filter !== "all") result = result.filter((l) => l.agent.category === filter)
     switch (sort) {
       case "score-desc": result.sort((a, b) => b.agent.score - a.agent.score); break
       case "price-asc": result.sort((a, b) => a.price - b.price); break
@@ -72,7 +86,7 @@ export function MarketplaceClient({
       case "recent": result.sort((a, b) => b.listedAt.getTime() - a.listedAt.getTime()); break
     }
     return result
-  }, [listings, filter, sort])
+  }, [listings, typeFilter, filter, sort])
 
   function openPurchase(listing: MarketplaceListingWithAgent) {
     if (!user) {
@@ -82,6 +96,24 @@ export function MarketplaceClient({
     }
     setBuyAccepted(false)
     setSelected(listing)
+  }
+
+  // Ficha pública: se puede ver todo (imagen, README, tecnologías, dependencias)
+  // ANTES de comprar. El ZIP nunca se expone aquí; eso requiere la compra.
+  function openDetails(listing: MarketplaceListingWithAgent) {
+    setDetailsTab(listing.listingType === "codigo" ? "readme" : "docs")
+    setDetailVersions([])
+    setDetails(listing)
+    if (listing.listingType === "codigo") {
+      getAgentVersions(listing.listingId).then(setDetailVersions)
+    }
+  }
+
+  function buyFromDetails() {
+    if (!details) return
+    const listing = details
+    setDetails(null)
+    openPurchase(listing)
   }
 
   async function confirmPurchase() {
@@ -158,6 +190,29 @@ export function MarketplaceClient({
         </div>
       </Reveal>
 
+      <Reveal as="section" className="market-type-bar">
+        <div className="container">
+          <div className="market-type-seg" role="tablist" aria-label="Modalidad de venta">
+            {TYPE_TABS.map((t) => {
+              const count = t.key === "all" ? stats.total : t.key === "codigo" ? stats.code : stats.access
+              return (
+                <button
+                  key={t.key}
+                  role="tab"
+                  aria-selected={typeFilter === t.key}
+                  className={`market-type-opt${typeFilter === t.key ? " active" : ""}`}
+                  onClick={() => setTypeFilter(t.key)}
+                >
+                  <span className="market-type-opt-label">{t.label}</span>
+                  <span className="market-type-opt-count">{count}</span>
+                  <span className="market-type-opt-hint">{t.hint}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </Reveal>
+
       <section className="filters-bar">
         <div className="container filters-inner">
           <div className="filter-tabs">
@@ -209,7 +264,12 @@ export function MarketplaceClient({
                     </div>
 
                     <div className="market-card-agent">
-                      <Avatar name={agent.name} size={44} />
+                      {listing.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={listing.imageUrl} alt="" className="market-card-img" />
+                      ) : (
+                        <Avatar name={agent.name} size={44} />
+                      )}
                       <div>
                         <Link className="market-card-name" href={`/agente?id=${agent.id}`}>
                           {agent.name}
@@ -234,6 +294,10 @@ export function MarketplaceClient({
                     </div>
 
                     <p className="market-card-desc">{listing.description}</p>
+
+                    <button className="market-card-details" onClick={() => openDetails(listing)}>
+                      Ver detalles →
+                    </button>
 
                     <div className="market-card-footer">
                       <div className="market-card-price">
@@ -264,8 +328,22 @@ export function MarketplaceClient({
             </div>
           ) : (
             <div className="page-empty">
-              <p className="empty-title">No hay agentes listados en esta categoría.</p>
-              <button className="btn-ghost" onClick={() => setFilter("all")}>Ver todos →</button>
+              <p className="empty-title">
+                {typeFilter === "codigo"
+                  ? "Todavía no hay agentes completos en esta categoría."
+                  : typeFilter === "acceso"
+                    ? "Todavía no hay licencias en esta categoría."
+                    : "No hay agentes listados en esta categoría."}
+              </p>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setTypeFilter("all")
+                  setFilter("all")
+                }}
+              >
+                Ver todos →
+              </button>
             </div>
           )}
         </div>
@@ -287,6 +365,125 @@ export function MarketplaceClient({
           </div>
         </div>
       </Reveal>
+
+      {/* Ficha pública — evaluar antes de comprar */}
+      {details && (
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setDetails(null)}>
+          <div className="modal-box detail-modal">
+            <button className="modal-close" onClick={() => setDetails(null)} aria-label="Cerrar">✕</button>
+
+            <div className="detail-head">
+              {details.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={details.imageUrl} alt="" className="detail-img" />
+              ) : (
+                <div className="detail-img detail-img-fallback">{details.agent.name.slice(0, 2).toUpperCase()}</div>
+              )}
+              <div className="detail-head-info">
+                <h3 className="modal-title" style={{ marginBottom: 4 }}>{details.agent.name}</h3>
+                <div className="detail-head-meta">
+                  <span className={`detail-badge${details.listingType === "codigo" ? " code" : ""}`}>
+                    {details.listingType === "codigo" ? "Agente Completo" : "Licencia por URL"}
+                  </span>
+                  <span className="cat-tag">{getCategoryLabel(details.agent.category)}</span>
+                </div>
+                <div className="detail-head-rank">
+                  #{rankPos(details.agent.id)} Global · Score {details.agent.score} · {details.agent.wins} victorias
+                </div>
+              </div>
+            </div>
+
+            <p className="detail-desc">{details.description}</p>
+
+            {details.listingType === "codigo" && details.technologies && details.technologies.length > 0 && (
+              <div className="detail-tags">
+                {details.technologies.map((t) => <span key={t} className="detail-tag">{t}</span>)}
+              </div>
+            )}
+            {details.listingType === "acceso" && details.compatibleModels && details.compatibleModels.length > 0 && (
+              <div className="detail-tags">
+                {details.compatibleModels.map((m) => <span key={m} className="detail-tag">{m}</span>)}
+              </div>
+            )}
+            {details.listingType === "codigo" && (
+              <div className="detail-facts">
+                {details.codeLicense && <span>Licencia: <strong>{details.codeLicense}</strong></span>}
+                {details.gitRepo && (
+                  <a href={details.gitRepo} target="_blank" rel="noopener noreferrer" className="detail-repo">Repositorio ↗</a>
+                )}
+              </div>
+            )}
+
+            {/* Pestañas de contenido público (el ZIP NO se expone aquí) */}
+            {(() => {
+              const tabs: [typeof detailsTab, string][] =
+                details.listingType === "codigo"
+                  ? [["readme", "README"], ["docs", "Documentación"], ["deps", "Dependencias"], ["versiones", "Versiones"]]
+                  : [["docs", "Documentación"]]
+              return (
+                <>
+                  <div className="detail-tabs">
+                    {tabs.map(([key, label]) => (
+                      <button
+                        key={key}
+                        className={`detail-tab${detailsTab === key ? " active" : ""}`}
+                        onClick={() => setDetailsTab(key)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="detail-tab-body">
+                    {detailsTab === "readme" && (
+                      <pre className="detail-doc">{details.readme || "Este agente no incluye README."}</pre>
+                    )}
+                    {detailsTab === "docs" && (
+                      <pre className="detail-doc">{details.documentation || "Sin documentación adicional."}</pre>
+                    )}
+                    {detailsTab === "deps" && (
+                      <pre className="detail-doc">{details.dependencies || "No se especificaron dependencias."}</pre>
+                    )}
+                    {detailsTab === "versiones" && (
+                      <div className="detail-versions">
+                        {detailVersions.length === 0 ? (
+                          <p className="detail-doc">Cargando versiones…</p>
+                        ) : (
+                          detailVersions.map((v) => (
+                            <div key={v.id} className="detail-version-row">
+                              <span className="detail-version-name">{v.version}</span>
+                              {v.changelog && <span className="detail-version-log">{v.changelog}</span>}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
+
+            <div className="detail-foot">
+              <div className="market-card-price">
+                <span className="market-card-price-val">
+                  {formatListingPrice(details.price, details.priceUnit, details.billingModel)}
+                </span>
+                <span className="market-card-price-label">
+                  {details.listingType === "codigo" ? "descarga única" : "acceso vía API"}
+                </span>
+              </div>
+              {purchasedIds.includes(details.listingId) && details.listingType === "codigo" ? (
+                <button className="btn-primary" onClick={() => downloadCode(details)}><span>Descargar</span></button>
+              ) : purchasedIds.includes(details.listingId) ? (
+                <button className="btn-ghost" disabled><span>Activo</span></button>
+              ) : (
+                <button className="btn-primary" onClick={buyFromDetails}>
+                  <span>{details.listingType === "codigo" ? "Comprar código" : "Obtener acceso"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setSelected(null)}>

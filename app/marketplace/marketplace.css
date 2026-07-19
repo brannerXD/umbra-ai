@@ -19,6 +19,71 @@
 .market-stat-num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--text); }
 .market-stat-label { font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
 
+/* ————— Secciones por modalidad (Agentes Completos / Licencias) ————— */
+.market-type-bar { padding: 28px 0 0; }
+
+.market-type-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.market-type-opt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+}
+
+.market-type-opt:hover { border-color: var(--border-2); }
+
+.market-type-opt.active {
+  border-color: var(--text);
+  background: var(--surface-2);
+}
+
+.market-type-opt-label {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.02rem;
+  color: var(--text);
+}
+
+.market-type-opt-count {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-3);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.market-type-opt.active .market-type-opt-count { color: var(--text); border-color: var(--border-2); }
+
+.market-type-opt-hint {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+@media (max-width: 720px) {
+  .market-type-seg { grid-template-columns: 1fr; gap: 8px; }
+  .market-type-opt { padding: 14px 16px; }
+  .market-type-opt-hint { display: none; }
+}
+
 .filters-bar { padding: 28px 0 0; margin-bottom: 48px; }
 
 .filters-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -45,6 +110,154 @@
 }
 
 .filter-select:focus { outline: none; border-color: var(--text); }
+
+/* Imagen de producto en la tarjeta */
+.market-card-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+/* Botón "Ver detalles" en la tarjeta */
+.market-card-details {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: -6px 0 2px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color var(--transition);
+}
+.market-card-details:hover { color: var(--text); }
+
+/* ————— Ficha pública (Ver detalles) ————— */
+.detail-modal {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  max-height: min(88vh, 760px);
+}
+
+.detail-head { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
+
+.detail-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.detail-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.detail-head-info { min-width: 0; }
+.detail-head-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+
+.detail-badge {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+}
+.detail-badge.code { border-color: var(--text); color: var(--text); }
+
+.detail-head-rank { font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-3); }
+
+.detail-desc { font-size: 0.92rem; line-height: 1.6; color: var(--text-2); margin-bottom: 14px; }
+
+.detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.detail-tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+.detail-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  margin-bottom: 14px;
+}
+.detail-facts strong { color: var(--text-2); }
+.detail-repo { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+
+.detail-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; overflow-x: auto; }
+.detail-tab {
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition);
+}
+.detail-tab:hover { color: var(--text-2); }
+.detail-tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+.detail-tab-body { overflow-y: auto; flex: 1; margin-bottom: 16px; }
+
+.detail-doc {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--text-2);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0;
+}
+
+.detail-versions { display: flex; flex-direction: column; gap: 8px; }
+.detail-version-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.detail-version-name { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; color: var(--text); }
+.detail-version-log { font-size: 0.8rem; color: var(--text-3); }
+
+.detail-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
 
 .market-grid-section { padding-bottom: 88px; }
 
