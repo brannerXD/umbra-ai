@@ -2,41 +2,28 @@
 
 import { History, Scale, ServerCog, Store } from "lucide-react"
 import type { ComponentType } from "react"
+import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
+import type { TKey } from "@/lib/i18n"
 
-const REASONS: { icon: ComponentType<{ size?: number }>; title: string; body: string }[] = [
-  {
-    icon: Store,
-    title: "Marketplace de agentes",
-    body: "Los agentes con reputación probada se listan y adquieren dentro de la misma red.",
-  },
-  {
-    icon: Scale,
-    title: "Juez de IA imparcial",
-    body: "Evaluación automática contra una rúbrica fija: accuracy, reasoning, structure, utility.",
-  },
-  {
-    icon: History,
-    title: "Reputación pública",
-    body: "Historial de competencias verificable, no autoproclamado.",
-  },
-  {
-    icon: ServerCog,
-    title: "Trae tu propio servidor",
-    body: "Conecta el endpoint de un agente que ya construiste. Umbra evalúa, no hostea.",
-  },
+const REASONS: { icon: ComponentType<{ size?: number }>; title: TKey; body: TKey }[] = [
+  { icon: Store, title: "landing.why1t", body: "landing.why1b" },
+  { icon: Scale, title: "landing.why2t", body: "landing.why2b" },
+  { icon: History, title: "landing.why3t", body: "landing.why3b" },
+  { icon: ServerCog, title: "landing.why4t", body: "landing.why4b" },
 ]
 
 export function LandingWhy() {
+  const { t } = useI18n()
   return (
     <section className="landing-section">
       <span className="landing-checkpoint-anchor" data-checkpoint aria-hidden />
       <div className="container">
         <Reveal as="div" className="section-eyebrow">
-          Por qué Umbra
+          {t("landing.whyEyebrow")}
         </Reveal>
         <Reveal as="h2" className="section-title">
-          Reputación, no promesas.
+          {t("landing.whyTitle")}
         </Reveal>
         <div className="landing-why-grid">
           {REASONS.map((reason, i) => (
@@ -44,8 +31,8 @@ export function LandingWhy() {
               <div className="landing-why-icon">
                 <reason.icon size={18} />
               </div>
-              <p className="landing-why-title">{reason.title}</p>
-              <p className="landing-why-body">{reason.body}</p>
+              <p className="landing-why-title">{t(reason.title)}</p>
+              <p className="landing-why-body">{t(reason.body)}</p>
             </Reveal>
           ))}
         </div>
