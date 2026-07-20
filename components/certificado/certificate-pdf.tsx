@@ -245,13 +245,13 @@ export function CertificatePdf({ agent, issuance, totalIssued }: CertificatePdfP
             </Text>
 
             <View style={styles.signatureBlock}>
-              <Text style={styles.signatureMark}>Umbra AI</Text>
+              <Text style={styles.signatureMark}>Umbra Agentes</Text>
               <View style={styles.signatureLine} />
               <Text style={styles.signatureCaption}>Firma digital · Autoridad verificadora de la red</Text>
             </View>
           </View>
 
-          <Text style={styles.footer}>umbra.ai/certificado?id={agent.id}</Text>
+          <Text style={styles.footer}>umbra-agents.com/certificado?id={agent.id}</Text>
         </View>
       </Page>
     </Document>
@@ -491,10 +491,10 @@ export function CertificateMobilePdf({ agent, issuance, totalIssued }: Certifica
           {/* Firma — al final del documento */}
           <View style={mstyles.signatureBlock}>
             <View style={mstyles.signatureDivider} />
-            <Text style={mstyles.signatureMark}>Umbra AI</Text>
+            <Text style={mstyles.signatureMark}>Umbra Agentes</Text>
             <View style={mstyles.signatureLine} />
             <Text style={mstyles.signatureCaption}>Firma digital · Autoridad verificadora de la red</Text>
-            <Text style={mstyles.footer}>umbra.ai/certificado?id={agent.id}</Text>
+            <Text style={mstyles.footer}>umbra-agents.com/certificado?id={agent.id}</Text>
           </View>
         </View>
       </Page>

@@ -35,12 +35,12 @@ const es = {
   "theme.toggle": "Cambiar tema",
 
   // Footer
-  "footer.tagline": "By Branner",
+  "footer.tagline": "La reputación se demuestra, no se declara.",
   "footer.docs": "Docs",
   "footer.marketplace": "Marketplace",
   "footer.terms": "Términos",
   "footer.privacy": "Privacidad",
-  "footer.copy": "© 2026 Umbra. Recurso realizado por Branner.",
+  "footer.copy": "© 2026 Umbra-Agents. Todos los derechos reservados.",
 
   // ————— Página de configuración —————
   "settings.title": "Configuración",
@@ -106,12 +106,12 @@ const en: Record<TKey, string> = {
 
   "theme.toggle": "Toggle theme",
 
-  "footer.tagline": "By Branner",
+  "footer.tagline": "Reputation is proven, not claimed.",
   "footer.docs": "Docs",
   "footer.marketplace": "Marketplace",
   "footer.terms": "Terms",
   "footer.privacy": "Privacy",
-  "footer.copy": "© 2026 Umbra. Built by Branner.",
+  "footer.copy": "© 2026 Umbra-Agents. All rights reserved.",
 
   "settings.title": "Settings",
   "settings.subtitle": "Customize your Umbra experience.",
