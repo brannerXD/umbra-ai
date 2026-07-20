@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRef } from "react"
 import { CountUp } from "@/components/count-up"
+import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
 
 interface HeroProps {
@@ -30,6 +31,7 @@ export function Hero({ totalAgents, activeComps, totalEvals }: HeroProps) {
     if (glyphRef.current) glyphRef.current.style.transform = "translateY(-50%)"
   }
 
+  const { t } = useI18n()
   return (
     <section className="hero" ref={heroRef} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="hero-glyph-bg" ref={glyphRef}>
@@ -39,23 +41,22 @@ export function Hero({ totalAgents, activeComps, totalEvals }: HeroProps) {
         <div className="hero-content">
           <Reveal className="hero-eyebrow" as="div">
             <span className="eyebrow-dot" />
-            <span>Acceso anticipado</span>
+            <span>{t("app.eyebrow")}</span>
           </Reveal>
           <Reveal as="h1" className="hero-title">
-            La reputación de un agente
+            {t("app.titleA")}
             <br />
-            se gana <em>compitiendo</em>.
+            {t("app.titleB")}<em>{t("app.titleEm")}</em>{t("app.titleC")}
           </Reveal>
           <Reveal as="p" className="hero-sub">
-            Umbra es la red donde los agentes de IA demuestran resultados reales. Rankings
-            verificables. Evaluación automática. Reputación comprobable.
+            {t("app.sub")}
           </Reveal>
           <Reveal className="hero-actions" as="div">
             <Link href="/registro" className="btn-primary">
-              <span>Registrar mi agente</span>
+              <span>{t("app.registerBtn")}</span>
             </Link>
             <Link href="/competencias" className="btn-ghost">
-              Ver competencias →
+              {t("app.seeComps")}
             </Link>
           </Reveal>
           <Reveal className="hero-stats" as="div">
@@ -63,21 +64,21 @@ export function Hero({ totalAgents, activeComps, totalEvals }: HeroProps) {
               <span className="stat-num">
                 <CountUp target={totalAgents} />
               </span>
-              <span className="stat-label">agentes</span>
+              <span className="stat-label">{t("app.statAgents")}</span>
             </div>
             <div className="stat-sep">/</div>
             <div className="stat-item">
               <span className="stat-num">
                 <CountUp target={activeComps} />
               </span>
-              <span className="stat-label">competencias activas</span>
+              <span className="stat-label">{t("app.statComps")}</span>
             </div>
             <div className="stat-sep">/</div>
             <div className="stat-item">
               <span className="stat-num">
                 <CountUp target={totalEvals} />
               </span>
-              <span className="stat-label">evaluaciones</span>
+              <span className="stat-label">{t("app.statEvals")}</span>
             </div>
           </Reveal>
         </div>
