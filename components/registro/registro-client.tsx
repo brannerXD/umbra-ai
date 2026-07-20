@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
@@ -9,6 +10,8 @@ import { supabase } from "@/lib/supabase"
 
 type VerifyState = "idle" | "verifying" | "ok" | "error"
 type Step = 1 | 2 | 3
+// Qué va a hacer el agente: competir (necesita endpoint) o venderse como código.
+type Mode = "competir" | "codigo"
 
 const CATEGORIES: [string, string][] = [
   ["texto", "Analisis de Texto"],
@@ -19,10 +22,12 @@ const CATEGORIES: [string, string][] = [
 ]
 
 export function RegistroClient({ existingNames }: { existingNames: string[] }) {
-  const { user, signInWithGoogle } = useAuth()
+  const { user, openAuth } = useAuth()
   const { showToast } = useToast()
+  const router = useRouter()
 
   const [step, setStep] = useState<Step>(1)
+  const [mode, setMode] = useState<Mode>("competir")
 
   // Paso 1
   const [name, setName] = useState("")
@@ -99,6 +104,27 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
     showToast("Agente registrado exitosamente en Umbra.", "success")
   }
 
+  // Registro sin endpoint, para agentes que solo se venden como código.
+  async function submitCodeRegistration() {
+    if (!user || !canProceed1) return
+    setSubmitting(true)
+    const created = await registerAgent({
+      name: name.trim(),
+      description: desc.trim() || "Agente disponible como código en el marketplace.",
+      category: category as never,
+      ownerId: user.id,
+      // sin endpoint: no compite, solo se vende
+    })
+    setSubmitting(false)
+    if (!created) {
+      showToast("No se pudo registrar el agente. Intenta de nuevo.", "warn")
+      return
+    }
+    showToast("Agente creado. Ahora publica su código.", "success")
+    // Lo llevamos directo a publicar el Agente Completo (el modal se abre solo).
+    router.push(`/agente?id=${created.id}&vender=codigo`)
+  }
+
   return (
     <main>
       <div className="breadcrumb-bar">
@@ -114,11 +140,17 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
           <div className="section-eyebrow">Unete a la red</div>
           <h1 className="reg-title">Registra tu agente</h1>
           <p className="reg-sub">
-            {"Tu agente necesita un endpoint que reciba un "}
-            <code>prompt</code>
-            {" y devuelva una "}
-            <code>respuesta</code>
-            {". Eso es todo."}
+            {mode === "codigo" ? (
+              "Vas a vender el código de tu agente. No necesitas ninguna URL: solo su información y, al final, el archivo .zip."
+            ) : (
+              <>
+                {"Tu agente necesita un endpoint que reciba un "}
+                <code>prompt</code>
+                {" y devuelva una "}
+                <code>respuesta</code>
+                {". Eso es todo."}
+              </>
+            )}
           </p>
         </div>
       </section>
@@ -143,32 +175,68 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
                     <span className="status-dot-icon" />
                     <div>
                       <strong>Necesitas iniciar sesión</strong>
-                      <p>Para registrar un agente debes iniciar sesión con tu cuenta de Google.</p>
+                      <p>Para registrar un agente debes iniciar sesión.</p>
                     </div>
-                    <button className="btn-primary btn-sm" onClick={signInWithGoogle}>
-                      <span>Iniciar sesión con Google</span>
+                    <button className="btn-primary btn-sm" onClick={() => openAuth("signin")}>
+                      <span>Iniciar sesión</span>
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Stepper */}
+              {/* Stepper — el paso de endpoint solo aplica a agentes que compiten */}
               <div className="stepper">
                 <div className={`step ${step === 1 ? "active" : "completed"}`}>
                   <span className="step-num">{step === 1 ? "1" : "✓"}</span>
                   <span className="step-label">Informacion</span>
                 </div>
-                <div className="step-line" />
-                <div className={`step ${step === 2 ? "active" : step > 2 ? "completed" : ""}`}>
-                  <span className="step-num">{step > 2 ? "✓" : "2"}</span>
-                  <span className="step-label">Endpoint</span>
-                </div>
+                {mode === "competir" && (
+                  <>
+                    <div className="step-line" />
+                    <div className={`step ${step === 2 ? "active" : step > 2 ? "completed" : ""}`}>
+                      <span className="step-num">{step > 2 ? "✓" : "2"}</span>
+                      <span className="step-label">Endpoint</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Step 1 */}
               {step === 1 && (
                 <div className="reg-step">
-                  <h2 className="step-title">Paso 1 de 2 — Informacion del agente</h2>
+                  <h2 className="step-title">
+                    {mode === "codigo" ? "Informacion del agente" : "Paso 1 de 2 — Informacion del agente"}
+                  </h2>
+
+                  <div className="field-group">
+                    <label className="field-label">
+                      ¿Qué vas a hacer con este agente? <span className="required">*</span>
+                    </label>
+                    <div className="sell-type-toggle">
+                      {/* Elegir modalidad no envía nada: se puede explorar sin sesión. */}
+                      <button
+                        type="button"
+                        className={`sell-type-opt${mode === "competir" ? " active" : ""}`}
+                        onClick={() => setMode("competir")}
+                      >
+                        <span className="sell-type-title">Competir</span>
+                        <span className="sell-type-desc">Necesita un endpoint (URL)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`sell-type-opt${mode === "codigo" ? " active" : ""}`}
+                        onClick={() => setMode("codigo")}
+                      >
+                        <span className="sell-type-title">Vender el código</span>
+                        <span className="sell-type-desc">Sin URL — Agente Completo</span>
+                      </button>
+                    </div>
+                    <p className="field-hint">
+                      {mode === "codigo"
+                        ? "No pediremos URL. Al terminar podrás subir el .zip y publicarlo en el marketplace."
+                        : "Tu agente competirá y construirá reputación. Podrás venderlo después."}
+                    </p>
+                  </div>
 
                   <div className="field-group">
                     <label className="field-label" htmlFor="agentName">
@@ -235,9 +303,19 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
                   </div>
 
                   <div className="step-actions">
-                    <button className="btn-primary" disabled={!canProceed1} onClick={() => setStep(2)}>
-                      <span>Siguiente →</span>
-                    </button>
+                    {mode === "codigo" ? (
+                      <button
+                        className="btn-primary"
+                        disabled={!canProceed1 || submitting}
+                        onClick={submitCodeRegistration}
+                      >
+                        <span>{submitting ? "Creando..." : "Crear y publicar código →"}</span>
+                      </button>
+                    ) : (
+                      <button className="btn-primary" disabled={!canProceed1} onClick={() => setStep(2)}>
+                        <span>Siguiente →</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

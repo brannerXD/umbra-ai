@@ -5,18 +5,24 @@
 // ========================================
 
 import { supabase } from "./supabase"
-import { formatPrice, getCategoryLabel } from "./umbra"
+import { formatListingPrice, getCategoryLabel } from "./umbra"
 import type {
   ActivityEvent,
   Agent,
   AgentHistoryEntry,
+  AgentVersion,
+  BillingModel,
   Category,
   CertificateFormat,
   CertificateIssuance,
   Competition,
   CompetitionEvaluation,
   CompetitionResult,
+  ListingType,
   MarketplaceListingWithAgent,
+  PurchasedAgent,
+  PurchaseStatus,
+  SellerStats,
   UserProfile,
 } from "./types"
 
@@ -254,7 +260,8 @@ export async function registerAgent(input: {
   name: string
   description: string
   category: Category
-  endpoint: string
+  // Opcional: los agentes que solo se venden como código no necesitan endpoint.
+  endpoint?: string | null
   ownerId: string
 }): Promise<Agent | null> {
   const { data, error } = await supabase
@@ -264,7 +271,7 @@ export async function registerAgent(input: {
       description: input.description,
       category: input.category,
       category_label: getCategoryLabel(input.category),
-      endpoint: input.endpoint,
+      endpoint: input.endpoint ?? null,
       owner_id: input.ownerId,
       verified: true,
     })
@@ -335,16 +342,90 @@ export async function enrollAgent(competitionId: string, agentId: string): Promi
   return true
 }
 
+// Resumen para el panel de administración. Lo calcula la función SECURITY
+// DEFINER `admin_stats` (solo admins). Una sola llamada trae todo.
+export interface AdminStats {
+  usersTotal: number
+  usersLast7d: number
+  agentsTotal: number
+  competitionsTotal: number
+  evaluationsTotal: number
+  listingsTotal: number
+  purchasesTotal: number
+  certificatesTotal: number
+  competitionsByStatus: Record<string, number>
+  listingsByType: Record<string, number>
+  agentsByCategory: { label: string; value: number }[]
+  topAgents: { label: string; value: number }[]
+}
+
+export async function getAdminStats(): Promise<AdminStats | null> {
+  const { data, error } = await supabase.rpc("admin_stats")
+  if (error || !data) {
+    console.error("getAdminStats failed", error)
+    return null
+  }
+  const d = data as Record<string, unknown>
+  return {
+    usersTotal: Number(d.users_total ?? 0),
+    usersLast7d: Number(d.users_last_7d ?? 0),
+    agentsTotal: Number(d.agents_total ?? 0),
+    competitionsTotal: Number(d.competitions_total ?? 0),
+    evaluationsTotal: Number(d.evaluations_total ?? 0),
+    listingsTotal: Number(d.listings_total ?? 0),
+    purchasesTotal: Number(d.purchases_total ?? 0),
+    certificatesTotal: Number(d.certificates_total ?? 0),
+    competitionsByStatus: (d.competitions_by_status as Record<string, number>) ?? {},
+    listingsByType: (d.listings_by_type as Record<string, number>) ?? {},
+    agentsByCategory: (d.agents_by_category as { label: string; value: number }[]) ?? [],
+    topAgents: (d.top_agents as { label: string; value: number }[]) ?? [],
+  }
+}
+
+// Crea y publica una competencia. Solo admins: la validación real la hace la
+// función SECURITY DEFINER `create_competition` en la base (RLS bloquea el
+// insert directo). Devuelve el id de la competencia o null si falla.
+export async function createCompetition(input: {
+  title: string
+  category: Category
+  prompt: string
+  agentsMax: number
+}): Promise<string | null> {
+  const { data, error } = await supabase.rpc("create_competition", {
+    p_title: input.title,
+    p_category: input.category,
+    p_category_label: getCategoryLabel(input.category),
+    p_prompt: input.prompt,
+    p_agents_max: input.agentsMax,
+  })
+  if (error) {
+    console.error("createCompetition failed", error)
+    return null
+  }
+  return data as string
+}
+
 // ── MARKETPLACE ──────────────────────────
 
 interface ListingRow {
+  id: string
   agent_id: string
   listed: boolean
+  listing_type: string
   price: number
   price_unit: string
-  license_type: string
+  billing_model: string
+  code_license: string | null
+  code_path: string | null
   description: string | null
   listed_at: string
+  image_url: string | null
+  documentation: string | null
+  compatible_models: string[] | null
+  git_repo: string | null
+  technologies: string[] | null
+  dependencies: string | null
+  readme: string | null
   agents: (AgentRow & { profiles: { username: string | null } | null }) | null
 }
 
@@ -352,13 +433,24 @@ function mapListing(row: ListingRow): MarketplaceListingWithAgent {
   const agent = row.agents as AgentRow
   return {
     agentId: row.agent_id,
+    listingId: row.id,
     listed: row.listed,
+    listingType: (row.listing_type as ListingType) ?? "acceso",
     price: Number(row.price),
     priceUnit: row.price_unit,
-    licenseType: row.license_type,
+    billingModel: (row.billing_model as BillingModel) ?? "mensual",
+    codeLicense: row.code_license,
+    codePath: row.code_path,
     description: row.description ?? "",
     sellerName: row.agents?.profiles?.username ?? "Usuario",
     listedAt: new Date(row.listed_at),
+    imageUrl: row.image_url,
+    documentation: row.documentation,
+    compatibleModels: row.compatible_models,
+    gitRepo: row.git_repo,
+    technologies: row.technologies,
+    dependencies: row.dependencies,
+    readme: row.readme,
     agent: mapAgent(agent),
   }
 }
@@ -385,23 +477,283 @@ export async function getListingByAgentId(agentId: string): Promise<MarketplaceL
 
 export async function createListing(input: {
   agentId: string
+  listingType: ListingType
   price: number
   priceUnit: string
-  licenseType: string
+  billingModel: BillingModel
   description: string
+  codeLicense?: string | null
+  codePath?: string | null
+  // Metadata extendida (toda opcional; según el tipo de listado)
+  imageUrl?: string | null
+  documentation?: string | null
+  compatibleModels?: string[] | null
+  gitRepo?: string | null
+  technologies?: string[] | null
+  dependencies?: string | null
+  readme?: string | null
+}): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .insert({
+      agent_id: input.agentId,
+      listing_type: input.listingType,
+      price: input.price,
+      price_unit: input.priceUnit,
+      billing_model: input.billingModel,
+      description: input.description,
+      code_license: input.codeLicense ?? null,
+      code_path: input.codePath ?? null,
+      image_url: input.imageUrl ?? null,
+      documentation: input.documentation ?? null,
+      compatible_models: input.compatibleModels ?? null,
+      git_repo: input.gitRepo ?? null,
+      technologies: input.technologies ?? null,
+      dependencies: input.dependencies ?? null,
+      readme: input.readme ?? null,
+    })
+    .select("id")
+    .single()
+  if (error || !data) {
+    console.error("createListing failed", error)
+    return null
+  }
+  return data.id as string
+}
+
+// Sube el ZIP de una versión concreta al bucket privado y devuelve su ruta.
+// Cada versión vive en su propia ruta inmutable: `userId/agentId/version.zip`.
+// Solo el dueño puede escribir en su carpeta (RLS de storage).
+export async function uploadAgentCode(
+  userId: string,
+  agentId: string,
+  version: string,
+  file: File,
+): Promise<string | null> {
+  const safeVersion = version.replace(/[^a-zA-Z0-9._-]/g, "")
+  const path = `${userId}/${agentId}/${safeVersion}.zip`
+  const { error } = await supabase.storage
+    .from("agent-code")
+    .upload(path, file, { upsert: true, contentType: "application/zip" })
+  if (error) {
+    console.error("uploadAgentCode failed", error)
+    return null
+  }
+  return path
+}
+
+// Sube una imagen de producto al bucket público `agent-images` y devuelve su URL.
+export async function uploadAgentImage(
+  userId: string,
+  agentId: string,
+  file: File,
+): Promise<string | null> {
+  const ext = file.name.split(".").pop() ?? "png"
+  const path = `${userId}/${agentId}.${ext}`
+  const { error } = await supabase.storage
+    .from("agent-images")
+    .upload(path, file, { upsert: true, cacheControl: "3600" })
+  if (error) {
+    console.error("uploadAgentImage failed", error)
+    return null
+  }
+  const { data } = supabase.storage.from("agent-images").getPublicUrl(path)
+  return `${data.publicUrl}?t=${Date.now()}`
+}
+
+// ── VERSIONES DEL AGENTE COMPLETO ────────
+
+interface AgentVersionRow {
+  id: string
+  listing_id: string
+  version: string
+  code_path: string
+  changelog: string | null
+  created_at: string
+}
+
+function mapAgentVersion(row: AgentVersionRow): AgentVersion {
+  return {
+    id: row.id,
+    listingId: row.listing_id,
+    version: row.version,
+    codePath: row.code_path,
+    changelog: row.changelog,
+    createdAt: new Date(row.created_at),
+  }
+}
+
+// Registra una nueva versión (v1.0, v1.1, v2.0...) y actualiza el code_path del
+// listado para que apunte a la última. Devuelve la versión creada.
+export async function createAgentVersion(input: {
+  listingId: string
+  version: string
+  codePath: string
+  changelog?: string | null
+}): Promise<AgentVersion | null> {
+  const { data, error } = await supabase
+    .from("agent_versions")
+    .insert({
+      listing_id: input.listingId,
+      version: input.version,
+      code_path: input.codePath,
+      changelog: input.changelog ?? null,
+    })
+    .select("*")
+    .single()
+  if (error || !data) {
+    console.error("createAgentVersion failed", error)
+    return null
+  }
+  // El listado apunta siempre a la última versión (compatibilidad + descarga por defecto).
+  await supabase
+    .from("marketplace_listings")
+    .update({ code_path: input.codePath })
+    .eq("id", input.listingId)
+  return mapAgentVersion(data as AgentVersionRow)
+}
+
+export async function getAgentVersions(listingId: string): Promise<AgentVersion[]> {
+  const { data, error } = await supabase
+    .from("agent_versions")
+    .select("*")
+    .eq("listing_id", listingId)
+    .order("created_at", { ascending: false })
+  if (error || !data) return []
+  return (data as AgentVersionRow[]).map(mapAgentVersion)
+}
+
+// ── COMPRAS ──────────────────────────────
+
+// Registra la compra. Aún sin cobro real: deja constancia del derecho de
+// acceso/descarga, que es lo que habilita la RLS del bucket privado. Para el
+// código, guarda qué versión se compró.
+export async function purchaseListing(input: {
+  listingId: string
+  buyerId: string
+  price: number
+  priceUnit: string
+  versionId?: string | null
 }): Promise<boolean> {
-  const { error } = await supabase.from("marketplace_listings").insert({
-    agent_id: input.agentId,
+  const { error } = await supabase.from("purchases").insert({
+    listing_id: input.listingId,
+    buyer_id: input.buyerId,
     price: input.price,
     price_unit: input.priceUnit,
-    license_type: input.licenseType,
-    description: input.description,
+    version_id: input.versionId ?? null,
+    status: "completada",
   })
+  // Ya la había comprado antes: no es un error para el usuario.
+  if (error && error.code === "23505") return true
   if (error) {
-    console.error("createListing failed", error)
+    console.error("purchaseListing failed", error)
     return false
   }
   return true
+}
+
+// IDs de listados que este usuario ya compró (para mostrar la descarga).
+export async function getPurchasedListingIds(buyerId: string): Promise<string[]> {
+  const { data, error } = await supabase.from("purchases").select("listing_id").eq("buyer_id", buyerId)
+  if (error || !data) return []
+  return data.map((p) => p.listing_id as string)
+}
+
+// "Mis Agentes Comprados": todo lo que el usuario compró, con sus versiones,
+// estado y si hay una actualización disponible.
+interface PurchaseRow {
+  id: string
+  listing_id: string
+  status: string
+  created_at: string
+  version_id: string | null
+  marketplace_listings: (ListingRow & { agent_versions: AgentVersionRow[] | null }) | null
+}
+
+export async function getPurchasedAgents(buyerId: string): Promise<PurchasedAgent[]> {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select(
+      "id, listing_id, status, created_at, version_id, marketplace_listings(*, agents(*, profiles(username)), agent_versions(*))",
+    )
+    .eq("buyer_id", buyerId)
+    .order("created_at", { ascending: false })
+
+  if (error || !data) return []
+
+  return (data as unknown as PurchaseRow[])
+    .filter((p) => p.marketplace_listings && p.marketplace_listings.agents)
+    .map((p) => {
+      const listingRow = p.marketplace_listings as ListingRow & { agent_versions: AgentVersionRow[] | null }
+      const versions = (listingRow.agent_versions ?? [])
+        .map(mapAgentVersion)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      const latestVersion = versions[0]?.version ?? null
+      const boughtVersion = p.version_id
+        ? versions.find((v) => v.id === p.version_id)?.version ?? null
+        : null
+      const hasUpdate = !!boughtVersion && !!latestVersion && boughtVersion !== latestVersion
+      return {
+        purchaseId: p.id,
+        listing: mapListing(listingRow),
+        status: p.status as PurchaseStatus,
+        purchasedAt: new Date(p.created_at),
+        boughtVersion,
+        latestVersion,
+        hasUpdate,
+        versions,
+      } satisfies PurchasedAgent
+    })
+}
+
+// Registra una descarga (para las métricas del vendedor). Silencioso si falla.
+export async function logDownload(input: {
+  listingId: string
+  versionId?: string | null
+}): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser()
+  const uid = userData.user?.id
+  if (!uid) return
+  await supabase.from("downloads").insert({
+    listing_id: input.listingId,
+    version_id: input.versionId ?? null,
+    user_id: uid,
+  })
+}
+
+// URL temporal de descarga del código. Solo funciona si la RLS lo permite
+// (eres el dueño o compraste el listado). Registra la descarga para métricas.
+export async function getCodeDownloadUrl(
+  codePath: string,
+  track?: { listingId: string; versionId?: string | null },
+): Promise<string | null> {
+  const { data, error } = await supabase.storage.from("agent-code").createSignedUrl(codePath, 60)
+  if (error || !data) {
+    console.error("getCodeDownloadUrl failed", error)
+    return null
+  }
+  if (track) await logDownload(track)
+  return data.signedUrl
+}
+
+// ── PANEL DEL VENDEDOR ───────────────────
+
+export async function getSellerStats(): Promise<SellerStats | null> {
+  const { data, error } = await supabase.rpc("seller_stats")
+  if (error || !data) {
+    console.error("getSellerStats failed", error)
+    return null
+  }
+  const d = data as Record<string, unknown>
+  return {
+    listingsTotal: Number(d.listings_total ?? 0),
+    salesTotal: Number(d.sales_total ?? 0),
+    revenueTotal: Number(d.revenue_total ?? 0),
+    downloadsTotal: Number(d.downloads_total ?? 0),
+    buyers: (d.buyers as SellerStats["buyers"]) ?? [],
+    topVersion: (d.top_version as SellerStats["topVersion"]) ?? null,
+    salesByAgent: (d.sales_by_agent as SellerStats["salesByAgent"]) ?? [],
+  }
 }
 
 // ── PERFIL ────────────────────────────────
@@ -494,15 +846,15 @@ export async function getActivityForUser(ownerId: string): Promise<ActivityEvent
 
   const { data: listings } = await supabase
     .from("marketplace_listings")
-    .select("agent_id, price, price_unit, listed_at")
+    .select("agent_id, price, price_unit, billing_model, listed_at")
     .in("agent_id", agentIds)
 
   listings?.forEach((l) => {
     events.push({
       type: "listed",
       date: new Date(l.listed_at),
-      title: `${nameById.get(l.agent_id)} fue listado en el marketplace`,
-      detail: formatPrice(l.price, l.price_unit),
+      title: `${nameById.get(l.agent_id)} está disponible en el marketplace`,
+      detail: formatListingPrice(l.price, l.price_unit, l.billing_model),
       agentId: l.agent_id,
     })
   })

@@ -3,9 +3,11 @@
 import Link from "next/link"
 import { useState } from "react"
 import { useAuth } from "./auth-provider"
+import { useI18n } from "./language-provider"
 
 export function AuthButton() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth()
+  const { user, loading, openAuth, signOut } = useAuth()
+  const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
 
   if (loading) return <button className="btn-wallet" disabled>···</button>
@@ -23,7 +25,16 @@ export function AuthButton() {
         {menuOpen && (
           <div className="auth-menu">
             <Link href="/perfil" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
-              Mi perfil
+              {t("auth.profile")}
+            </Link>
+            <Link href="/mis-compras" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
+              {t("auth.purchases")}
+            </Link>
+            <Link href="/vendedor" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
+              {t("auth.seller")}
+            </Link>
+            <Link href="/configuracion" className="auth-menu-item" onClick={() => setMenuOpen(false)}>
+              {t("auth.settings")}
             </Link>
             <button
               className="auth-menu-item"
@@ -32,7 +43,7 @@ export function AuthButton() {
                 signOut()
               }}
             >
-              Cerrar sesión
+              {t("auth.signout")}
             </button>
           </div>
         )}
@@ -41,8 +52,8 @@ export function AuthButton() {
   }
 
   return (
-    <button className="btn-wallet" onClick={signInWithGoogle}>
-      Iniciar sesión con Google
+    <button className="btn-wallet" onClick={() => openAuth("signin")}>
+      {t("auth.signin")}
     </button>
   )
 }

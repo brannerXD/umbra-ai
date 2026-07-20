@@ -1,6 +1,6 @@
 // Ejecuta una competencia completa:
 // 1. Llama al endpoint de cada agente inscrito con el prompt de la competencia.
-// 2. Evalúa las respuestas con un LLM (Groq) según la rúbrica (accuracy/reasoning/structure/utility).
+// 2. Evalúa las respuestas con un LLM (Gemini principal, Groq de respaldo) según la rúbrica.
 // 3. Guarda evaluaciones, determina el ganador y actualiza las estadísticas de los agentes.
 //
 // Usa la service role key (inyectada automáticamente por Supabase) para poder
@@ -14,7 +14,8 @@ const CORS_HEADERS = {
 }
 
 const AGENT_TIMEOUT_MS = 10000
-const JUDGE_MODEL = "llama-3.3-70b-versatile"
+const GROQ_MODEL = "llama-3.3-70b-versatile"        // juez de respaldo
+const GEMINI_MODEL = "gemini-flash-lite-latest"     // juez principal (el que tiene free tier en esta cuenta)
 
 // ─── Protección SSRF ──────────────────────────────────────────────────────────
 // Impide que el endpoint de un agente apunte a la red interna, loopback,
@@ -135,7 +136,7 @@ async function callAgent(endpoint: string, prompt: string): Promise<{ response: 
   }
 }
 
-// Jueces especializados por categoría: mismo modelo Groq, criterio experto distinto.
+// Jueces especializados por categoría: mismo modelo, criterio experto distinto.
 // Se mantienen los 4 ejes (accuracy/reasoning/structure/utility) reinterpretados por área.
 interface Judge {
   name: string
@@ -208,16 +209,9 @@ interface Judged {
   comments: string
 }
 
-async function judgeWithGroq(
-  apiKey: string,
-  prompt: string,
-  answers: AgentAnswer[],
-  judge: Judge,
-): Promise<Record<string, Judged>> {
-  const respondents = answers.filter((a) => a.response !== null)
-  if (respondents.length === 0) return {}
-
-  const rubric = `Eres ${judge.name}, un evaluador experto en ${judge.expertise}. Evalúa cada respuesta del 0 al 100 según:
+// Construye la rúbrica de evaluación (común a Gemini y Groq).
+function buildRubric(prompt: string, respondents: AgentAnswer[], judge: Judge): string {
+  return `Eres ${judge.name}, un evaluador experto en ${judge.expertise}. Evalúa cada respuesta del 0 al 100 según:
 - accuracy: ${judge.axes.accuracy}
 - reasoning: ${judge.axes.reasoning}
 - structure: ${judge.axes.structure}
@@ -231,6 +225,63 @@ ${respondents.map((a) => `### ${a.agentName}\n${a.response}`).join("\n\n")}
 
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"${respondents[0].agentName}": {"accuracy": 0, "reasoning": 0, "structure": 0, "utility": 0, "comments": "..."}, ...un objeto por cada agente listado arriba}`
+}
+
+// Extrae el objeto JSON de la respuesta del modelo.
+function parseJudged(text: string): Record<string, Judged> {
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) return {}
+  try {
+    return JSON.parse(jsonMatch[0])
+  } catch {
+    return {}
+  }
+}
+
+// Juez principal: Gemini (Google AI Studio). Devuelve {} si falla, para que el
+// llamador pueda caer en el respaldo (Groq).
+async function judgeWithGemini(
+  apiKey: string,
+  prompt: string,
+  answers: AgentAnswer[],
+  judge: Judge,
+): Promise<Record<string, Judged>> {
+  const respondents = answers.filter((a) => a.response !== null)
+  if (respondents.length === 0) return {}
+
+  const rubric = buildRubric(prompt, respondents, judge)
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: rubric }] }],
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2048, temperature: 0.2 },
+    }),
+  })
+
+  if (!res.ok) {
+    console.error("Gemini API error", res.status, await res.text().catch(() => ""))
+    return {}
+  }
+
+  const data = await res.json()
+  const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
+  return parseJudged(text)
+}
+
+// Respaldo: Groq (API compatible con OpenAI). Devuelve {} si falla.
+async function judgeWithGroq(
+  apiKey: string,
+  prompt: string,
+  answers: AgentAnswer[],
+  judge: Judge,
+): Promise<Record<string, Judged>> {
+  const respondents = answers.filter((a) => a.response !== null)
+  if (respondents.length === 0) return {}
+
+  const rubric = buildRubric(prompt, respondents, judge)
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -239,7 +290,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: JUDGE_MODEL,
+      model: GROQ_MODEL,
       max_tokens: 2048,
       response_format: { type: "json_object" },
       messages: [{ role: "user", content: rubric }],
@@ -253,14 +304,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
 
   const data = await res.json()
   const text: string = data?.choices?.[0]?.message?.content ?? ""
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) return {}
-
-  try {
-    return JSON.parse(jsonMatch[0])
-  } catch {
-    return {}
-  }
+  return parseJudged(text)
 }
 
 Deno.serve(async (req: Request) => {
@@ -270,6 +314,7 @@ Deno.serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const geminiKey = Deno.env.get("GEMINI_API_KEY")
   const groqKey = Deno.env.get("GROQ_API_KEY")
 
   const supabase = createClient(supabaseUrl, serviceRoleKey)
@@ -283,11 +328,11 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (!groqKey) {
+    if (!geminiKey && !groqKey) {
       return new Response(
         JSON.stringify({
           ok: false,
-          message: "Falta configurar el secreto GROQ_API_KEY en el proyecto de Supabase.",
+          message: "Falta configurar el juez: define el secreto GEMINI_API_KEY (o GROQ_API_KEY) en Supabase.",
         }),
         { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       )
@@ -359,9 +404,15 @@ Deno.serve(async (req: Request) => {
       ),
     )
 
-    // 3. Evaluar con Groq.
+    // 3. Evaluar: Gemini como juez principal, Groq como respaldo automático.
     const judge = getJudge(comp.category)
-    const judged = await judgeWithGroq(groqKey, comp.prompt ?? "", answers, judge)
+    let judged: Record<string, Judged> = {}
+    if (geminiKey) {
+      judged = await judgeWithGemini(geminiKey, comp.prompt ?? "", answers, judge)
+    }
+    if (Object.keys(judged).length === 0 && groqKey) {
+      judged = await judgeWithGroq(groqKey, comp.prompt ?? "", answers, judge)
+    }
 
     // 4. Guardar evaluaciones y puntajes finales.
     const scored = await Promise.all(

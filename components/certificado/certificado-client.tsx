@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { CountUp } from "@/components/count-up"
 import { Reveal } from "@/components/reveal"
 import { MIN_COMPS_FOR_CERTIFICATE } from "@/lib/services"
@@ -37,6 +38,20 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
   }
 
   const latest = issuances[0]
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false)
+    }
+    document.addEventListener("keydown", onKey)
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      document.body.style.overflow = ""
+    }
+  }, [menuOpen])
 
   return (
     <main>
@@ -92,9 +107,15 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
         </Reveal>
 
         <Reveal as="div" className="cert-actions">
-          <a href={`/certificado/pdf?id=${agent.id}`} className="btn-primary" download>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setMenuOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+          >
             <span>Descargar PDF</span>
-          </a>
+          </button>
           <span className="cert-issued-count">
             Certificado emitido {issuances.length} {issuances.length === 1 ? "vez" : "veces"}
           </span>
@@ -105,6 +126,74 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
           historial real de competencias del agente. No es una promesa de resultados futuros.
         </Reveal>
       </section>
+
+      {menuOpen && (
+        <div
+          className="modal-overlay open"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Elegir formato de descarga"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div className="modal-box cert-format-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="modal-close"
+              aria-label="Cerrar"
+              onClick={() => setMenuOpen(false)}
+            >
+              ✕
+            </button>
+            <h2 className="modal-title">Descargar certificado</h2>
+            <p className="modal-sub">Elige el formato según dónde lo vas a ver.</p>
+
+            <div className="cert-format-options">
+              <a
+                href={`/certificado/pdf?id=${agent.id}&format=desktop`}
+                className="cert-format-option"
+                download
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="cert-format-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="4" width="16" height="11" rx="1.4" />
+                    <path d="M2 19h20" />
+                    <path d="M10 19l.4-1.6h3.2l.4 1.6" />
+                  </svg>
+                </span>
+                <span className="cert-format-text">
+                  <strong>Escritorio</strong>
+                  <em>Horizontal · ideal para PC e imprimir</em>
+                </span>
+              </a>
+              <a
+                href={`/certificado/pdf?id=${agent.id}&format=mobile`}
+                className="cert-format-option"
+                download
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="cert-format-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="7" y="2" width="10" height="20" rx="2.6" />
+                    <path d="M10.5 4.6h3" />
+                    <path d="M10.6 19.6h2.8" />
+                  </svg>
+                </span>
+                <span className="cert-format-text">
+                  <strong>Móvil</strong>
+                  <em>Vertical · se ve bien en el celular</em>
+                </span>
+              </a>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn-ghost" onClick={() => setMenuOpen(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

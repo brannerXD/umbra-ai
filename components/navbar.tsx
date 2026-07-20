@@ -2,18 +2,24 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { Settings } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ThemeToggle } from "./theme-toggle"
 import { AuthButton } from "./auth-button"
+import { useAuth } from "./auth-provider"
+import { useI18n } from "./language-provider"
+import type { TKey } from "@/lib/i18n"
 
-const LINKS = [
-  { href: "/competencias", label: "Competencias" },
-  { href: "/app",          label: "Ranking"       },
-  { href: "/marketplace",  label: "Marketplace"   },
+const LINKS: { href: string; key: TKey }[] = [
+  { href: "/competencias", key: "nav.competencias" },
+  { href: "/app",          key: "nav.ranking"       },
+  { href: "/marketplace",  key: "nav.marketplace"   },
 ]
 
 export function Navbar() {
   const pathname = usePathname()
+  const { isAdmin } = useAuth()
+  const { t } = useI18n()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -43,17 +49,33 @@ export function Navbar() {
               className={`nav-link ${isActive(link.href) ? "active" : ""}`}
               onClick={() => setMenuOpen(false)}
             >
-              {link.label}
+              {t(link.key)}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`nav-link nav-link-admin ${isActive("/admin") ? "active" : ""}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              {t("nav.admin")}
+            </Link>
+          )}
         </div>
         <div className="nav-right">
+          <Link
+            href="/configuracion"
+            className={`nav-settings ${isActive("/configuracion") ? "active" : ""}`}
+            aria-label={t("auth.settings")}
+          >
+            <Settings aria-hidden />
+          </Link>
           <ThemeToggle />
           <AuthButton />
         </div>
         <button
           className={`nav-hamburger ${menuOpen ? "open" : ""}`}
-          aria-label="Menú"
+          aria-label={t("nav.menu")}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((v) => !v)}
         >

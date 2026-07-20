@@ -1,5 +1,5 @@
 import { Reveal } from "@/components/reveal"
-import { formatPrice } from "@/lib/umbra"
+import { formatListingPrice } from "@/lib/umbra"
 import type { Competition, MarketplaceListingWithAgent } from "@/lib/types"
 
 interface TickerEvent {
@@ -29,7 +29,7 @@ function buildTickerEvents(
 
   listings.forEach((l) => {
     events.push({
-      text: `${l.agent.name} listado en marketplace por ${formatPrice(l.price, l.priceUnit)}`,
+      text: `${l.agent.name} disponible en marketplace por ${formatListingPrice(l.price, l.priceUnit, l.billingModel)}`,
       pts: null,
     })
   })

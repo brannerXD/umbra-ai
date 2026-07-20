@@ -45,8 +45,8 @@ export const viewport: Viewport = {
   themeColor: "#0A0A0A",
 }
 
-// Aplica el tema antes del primer paint para evitar flash.
-const themeScript = `(function(){try{var t=localStorage.getItem('umbra_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`
+// Aplica el tema y el idioma antes del primer paint para evitar flash.
+const themeScript = `(function(){try{var t=localStorage.getItem('umbra_theme')||'dark';document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('umbra_lang');if(l==='es'||l==='en')document.documentElement.setAttribute('lang',l);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (

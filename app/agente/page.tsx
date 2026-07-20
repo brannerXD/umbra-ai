@@ -13,9 +13,9 @@ export const metadata: Metadata = {
 export default async function AgentePage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>
+  searchParams: Promise<{ id?: string; vender?: string }>
 }) {
-  const { id } = await searchParams
+  const { id, vender } = await searchParams
   const ranked = await getRankedAgents()
   const agent = id ? await getAgentById(id) : ranked[0]
 
@@ -26,5 +26,13 @@ export default async function AgentePage({
   const rankPosition = ranked.findIndex((a) => a.id === agent.id) + 1
   const listing = await getListingByAgentId(agent.id)
 
-  return <AgenteClient agent={agent} rankPosition={rankPosition} listing={listing} />
+  return (
+    <AgenteClient
+      agent={agent}
+      rankPosition={rankPosition}
+      listing={listing}
+      // Llega desde el registro "vender el código": abre el modal ya en esa modalidad.
+      autoSellCode={vender === "codigo"}
+    />
+  )
 }

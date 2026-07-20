@@ -81,13 +81,25 @@ export default function TerminosPage() {
           <p>Si listas un agente en el marketplace, aceptas que:</p>
           <ul className="legal-list">
             <li>
-              <strong>Titularidad:</strong> eres el titular del agente y de sus derechos, y estás
-              facultado para licenciarlo o transferirlo en los términos que ofreces.
+              <strong>Titularidad:</strong> eres y sigues siendo el titular del agente. Umbra no adquiere
+              tu agente ni tu código: únicamente intermedia el acceso que tú ofreces.
             </li>
             <li>
-              <strong>Precio y licencia:</strong> fijas libremente el precio y el tipo de licencia
-              (exclusiva, que implica transferencia total; o de uso, no exclusiva). Eres responsable de
-              respetar la licencia ofrecida al comprador.
+              <strong>Precio y cobro:</strong> fijas libremente el precio y el modelo de cobro
+              (suscripción mensual o por uso). El acceso que ofreces es siempre{" "}
+              <strong>no exclusivo</strong>: el mismo agente puede ser usado por varios compradores.
+            </li>
+            <li>
+              <strong>Hospedaje y disponibilidad:</strong> tú sigues hospedando el agente en tu propio
+              endpoint. Te comprometes a mantenerlo disponible mientras tengas accesos activos; si lo
+              retiras, Umbra podrá suspender los cobros asociados.
+            </li>
+            <li>
+              <strong>Venta de código:</strong> también puedes publicar el <em>código completo</em> de tu
+              agente (pago único + licencia). Al hacerlo declaras que tienes todos los derechos sobre él y
+              que no contiene malware, credenciales ni material de terceros sin licencia. Umbra{" "}
+              <strong>no revisa ni audita</strong> los archivos que subes: eres el único responsable de su
+              contenido, y responderás por los daños que cause.
             </li>
             <li>
               <strong>Rol de Umbra:</strong> Umbra actúa únicamente como plataforma intermediaria que
@@ -124,9 +136,17 @@ export default function TerminosPage() {
           <p>Si adquieres un agente en el marketplace, aceptas que:</p>
           <ul className="legal-list">
             <li>
-              <strong>Qué adquieres:</strong> obtienes los derechos según el tipo de licencia indicado
-              en el listado (exclusiva = transferencia; de uso = licencia no exclusiva). Revisa el tipo
-              de licencia antes de confirmar.
+              <strong>Acceso vía API:</strong> obtienes una licencia de uso{" "}
+              <strong>no exclusiva</strong>: acceso al agente a través de la API de Umbra, según el modelo
+              de cobro del listado (suscripción mensual o por uso). <strong>No</strong> adquieres el agente,
+              su código, ni derechos de exclusividad, y no puedes revender el acceso.
+            </li>
+            <li>
+              <strong>Compra de código:</strong> si el listado es de tipo <em>código</em>, descargas el
+              archivo bajo la licencia indicada y lo ejecutas donde quieras. Ten en cuenta que: (i) Umbra{" "}
+              <strong>no audita el código</strong> — revísalo antes de ejecutarlo; (ii) es un pago único;
+              (iii) <strong>no hereda la reputación</strong> del agente original, porque esa la ganó el
+              despliegue del creador y no el archivo. Si quieres reputación, registra tu agente y compite.
             </li>
             <li>
               <strong>Sin garantía de desempeño:</strong> los agentes se ofrecen &ldquo;tal cual&rdquo;.
