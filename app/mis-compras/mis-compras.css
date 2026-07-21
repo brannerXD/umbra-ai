@@ -316,3 +316,74 @@
   .compras-summary { gap: 8px; }
   .compras-stat { min-width: 90px; padding: 14px; }
 }
+
+/* ── Acceso por API (modalidad "Licencia por URL") ── */
+
+.compra-api {
+  margin: 18px 0 4px;
+  padding: 16px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.compra-api-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.compra-api-intro {
+  font-size: 12px;
+  color: var(--text-3);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.compra-key-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.compra-key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  /* La llave es larga: que se parta en vez de desbordar el modal. */
+  word-break: break-all;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.compra-key-masked { color: var(--text-3); }
+
+.compra-key-meta {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.compra-key-warn {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--amber, #d19a30);
+  margin: 0 0 12px;
+}
+
+.compra-api-howto { margin-top: 14px; }
+
+.compra-api-howto-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
