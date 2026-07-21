@@ -94,7 +94,13 @@
   filter: drop-shadow(0 0 10px var(--green)) drop-shadow(0 0 26px color-mix(in srgb, var(--green) 65%, transparent));
 }
 
+/* El punto que va a la cabeza de la linea queda oculto a proposito: la linea
+   se dibuja sola y se lee mejor sin el. El elemento sigue existiendo y el JS
+   sigue posicionandolo, asi que para recuperarlo basta quitar el display:none.
+   Lo mismo aplica a .landing-checkpoint mas abajo. */
 .landing-spine-dot {
+  display: none;
+
   position: absolute;
   left: 0;
   top: 0;
@@ -121,7 +127,11 @@
   height: 0;
 }
 
+/* Los puntos de cada seccion: ocultos igual que el de la cabeza. No influyen
+   en la forma de la curva, que se calcula en computePoint(). */
 .landing-checkpoint {
+  display: none;
+
   position: absolute;
   left: 0;
   top: 0;
