@@ -9,10 +9,36 @@ import { JudgePanel } from "./judge-panel"
 import { LiveTimeline } from "./live-timeline"
 import { LiveRanking } from "./live-ranking"
 import { WinnerOverlay } from "./winner-overlay"
-import { getStatusLabel, getStatusClass, formatCountdown } from "@/lib/umbra"
+import { useI18n } from "@/components/language-provider"
+import { getStatusLabel, getStatusClass, formatCountdown, getCategoryLabel } from "@/lib/umbra"
 import { useNow } from "@/hooks/use-now"
 import type { Competition, CompetitionResult } from "@/lib/types"
 import type { ArenaResult } from "./arena-types"
+
+// Textos de la pagina en ambos idiomas. El evaluador se nombra de forma
+// generica a proposito: no exponemos que modelo de IA hace el juicio.
+const T = {
+  es: {
+    back: "\u2190 Competencias",
+    live: "En vivo",
+    timeLeft: "Tiempo restante",
+    activePrompt: "Prompt activo",
+    agents: "Agentes",
+    timeline: "Línea de tiempo",
+    judge: "Panel del evaluador",
+    liveRanking: "Ranking en vivo",
+  },
+  en: {
+    back: "\u2190 Competitions",
+    live: "Live",
+    timeLeft: "Time left",
+    activePrompt: "Active prompt",
+    agents: "Agents",
+    timeline: "Timeline",
+    judge: "Evaluator panel",
+    liveRanking: "Live ranking",
+  },
+} as const
 
 // How long to show "responding" before transitioning to "evaluating"
 const RESPONDING_WINDOW_MS = 2500
@@ -31,6 +57,8 @@ function deriveStatus(
 }
 
 export function ArenaClient({ comp }: { comp: Competition }) {
+  const { lang } = useI18n()
+  const s = T[lang]
   useNow(comp.status === "en-curso" ? 1000 : null)
 
   const router = useRouter()
@@ -122,7 +150,7 @@ export function ArenaClient({ comp }: { comp: Competition }) {
       <div className="arena-header">
         <div className="container">
           <Link href="/competencias" className="arena-breadcrumb">
-            ← Competencias
+            {s.back}
           </Link>
           <div className="arena-header-inner">
             <div>
@@ -130,13 +158,13 @@ export function ArenaClient({ comp }: { comp: Competition }) {
               <div className="arena-meta">
                 <span className={`status-badge ${getStatusClass(comp.status)}`}>
                   <span className="dot" />
-                  {getStatusLabel(comp.status)}
+                  {getStatusLabel(comp.status, lang)}
                 </span>
-                <span className="cat-tag">{comp.categoryLabel}</span>
+                <span className="cat-tag">{getCategoryLabel(comp.category, lang)}</span>
                 {comp.status === "en-curso" && (
                   <span className="arena-broadcast-badge">
                     <span className="arena-broadcast-dot" />
-                    En vivo
+                    {s.live}
                   </span>
                 )}
               </div>
@@ -144,10 +172,10 @@ export function ArenaClient({ comp }: { comp: Competition }) {
             {comp.status === "en-curso" && (
               <div style={{ textAlign: "right", flexShrink: 0 }}>
                 <div suppressHydrationWarning style={{ fontFamily: "var(--font-mono)", fontSize: "1.6rem", fontWeight: 700, color: "var(--red)", lineHeight: 1 }}>
-                  {formatCountdown(comp.endsAt)}
+                  {formatCountdown(comp.endsAt, lang)}
                 </div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.66rem", color: "var(--text-3)", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  Tiempo restante
+                  {s.timeLeft}
                 </div>
               </div>
             )}
@@ -159,12 +187,12 @@ export function ArenaClient({ comp }: { comp: Competition }) {
         <div className="arena-panel-left">
           {comp.prompt && comp.status !== "proxima" && (
             <div className="arena-prompt-strip">
-              <div className="arena-prompt-label">Prompt activo</div>
+              <div className="arena-prompt-label">{s.activePrompt}</div>
               <p className="arena-prompt-text">{comp.prompt}</p>
             </div>
           )}
           <div className="panel-section" style={{ flex: 1, overflowY: "auto" }}>
-            <div className="panel-label">Agentes</div>
+            <div className="panel-label">{s.agents}</div>
             <div className="battle-cards-list">
               {arenaResults.map((r, i) => (
                 <BattleCard key={r.agentId} result={r} isWinner={comp.winnerId === r.agentId} index={i} />
@@ -181,18 +209,18 @@ export function ArenaClient({ comp }: { comp: Competition }) {
             )}
           </div>
           <div className="panel-section" style={{ borderTop: "1px solid var(--border)" }}>
-            <div className="panel-label">Línea de tiempo</div>
+            <div className="panel-label">{s.timeline}</div>
             <LiveTimeline comp={comp} results={arenaResults} />
           </div>
         </div>
 
         <div className="arena-panel-right">
           <div className="panel-section">
-            <div className="panel-label">Juez Claude</div>
+            <div className="panel-label">{s.judge}</div>
             <JudgePanel results={arenaResults} compStatus={comp.status} />
           </div>
           <div className="panel-section" style={{ flex: 1, overflowY: "auto" }}>
-            <div className="panel-label">Ranking en vivo</div>
+            <div className="panel-label">{s.liveRanking}</div>
             <LiveRanking ranked={ranked} winnerId={comp.winnerId} />
           </div>
         </div>

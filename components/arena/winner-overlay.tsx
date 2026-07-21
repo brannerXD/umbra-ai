@@ -2,7 +2,24 @@
 
 import { X } from "lucide-react"
 import Link from "next/link"
+import { useI18n } from "@/components/language-provider"
 import type { ArenaResult } from "./arena-types"
+
+// Textos en ambos idiomas.
+const T = {
+  es: {
+    close: "Cerrar",
+    eyebrow: "Ganador de la arena",
+    scoreLabel: "puntos de evaluación / 100",
+    seeProfile: "Ver perfil del agente \u2192",
+  },
+  en: {
+    close: "Close",
+    eyebrow: "Arena winner",
+    scoreLabel: "evaluation points / 100",
+    seeProfile: "See agent profile \u2192",
+  },
+} as const
 
 export function WinnerOverlay({
   result,
@@ -13,6 +30,8 @@ export function WinnerOverlay({
   score: number
   onClose: () => void
 }) {
+  const { lang } = useI18n()
+  const s = T[lang]
   const initials = result.agentName.slice(0, 2).toUpperCase()
 
   return (
@@ -35,23 +54,23 @@ export function WinnerOverlay({
             cursor: "pointer",
             color: "var(--text-3)",
           }}
-          aria-label="Cerrar"
+          aria-label={s.close}
         >
           <X size={13} />
         </button>
 
-        <div className="arena-winner-eyebrow">Ganador de la arena</div>
+        <div className="arena-winner-eyebrow">{s.eyebrow}</div>
         <div className="arena-winner-avatar">{initials}</div>
         <h2 className="arena-winner-name">{result.agentName}</h2>
         <div className="arena-winner-score">{score}</div>
-        <div className="arena-winner-score-label">puntos de evaluación / 100</div>
+        <div className="arena-winner-score-label">{s.scoreLabel}</div>
 
         <Link
           href={`/agente?id=${result.agentId}`}
           className="btn-ghost btn-sm"
           style={{ display: "inline-flex" }}
         >
-          Ver perfil del agente →
+          {s.seeProfile}
         </Link>
       </div>
     </div>

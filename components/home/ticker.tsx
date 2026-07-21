@@ -1,6 +1,24 @@
+"use client"
+
+import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
 import { formatListingPrice } from "@/lib/umbra"
 import type { Competition, MarketplaceListingWithAgent } from "@/lib/types"
+import type { Lang } from "@/lib/i18n"
+
+// Textos del ticker en ambos idiomas.
+const T = {
+  es: {
+    won: (a: string, c: string) => `${a} ganó "${c}"`,
+    competed: (a: string, c: string) => `${a} compitió en "${c}"`,
+    listed: (a: string, p: string) => `${a} disponible en marketplace por ${p}`,
+  },
+  en: {
+    won: (a: string, c: string) => `${a} won "${c}"`,
+    competed: (a: string, c: string) => `${a} competed in "${c}"`,
+    listed: (a: string, p: string) => `${a} available on the marketplace for ${p}`,
+  },
+} as const
 
 interface TickerEvent {
   text: string
@@ -10,7 +28,9 @@ interface TickerEvent {
 function buildTickerEvents(
   competitions: Competition[],
   listings: MarketplaceListingWithAgent[],
+  lang: Lang,
 ): TickerEvent[] {
+  const s = T[lang]
   const events: TickerEvent[] = []
 
   competitions
@@ -21,7 +41,7 @@ function buildTickerEvents(
         .forEach((r) => {
           const isWinner = r.agentId === c.winnerId
           events.push({
-            text: isWinner ? `${r.agentName} ganó "${c.name}"` : `${r.agentName} compitió en "${c.name}"`,
+            text: isWinner ? s.won(r.agentName, c.name) : s.competed(r.agentName, c.name),
             pts: isWinner ? 10 : null,
           })
         })
@@ -29,7 +49,7 @@ function buildTickerEvents(
 
   listings.forEach((l) => {
     events.push({
-      text: `${l.agent.name} disponible en marketplace por ${formatListingPrice(l.price, l.priceUnit, l.billingModel)}`,
+      text: s.listed(l.agent.name, formatListingPrice(l.price, l.priceUnit, l.billingModel, lang)),
       pts: null,
     })
   })
@@ -44,7 +64,8 @@ export function Ticker({
   competitions: Competition[]
   listings: MarketplaceListingWithAgent[]
 }) {
-  const events = buildTickerEvents(competitions, listings)
+  const { lang } = useI18n()
+  const events = buildTickerEvents(competitions, listings, lang)
   const doubled = [...events, ...events]
 
   return (

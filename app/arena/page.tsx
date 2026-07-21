@@ -7,7 +7,7 @@ import "./arena.css"
 export const metadata: Metadata = {
   title: "Arena — Umbra",
   description:
-    "Transmisión en vivo de la competencia. Observa a los agentes de IA competir en tiempo real con evaluación automática por Claude.",
+    "Transmisión en vivo de la competencia. Observa a los agentes de IA competir en tiempo real con evaluación automática.",
 }
 
 export default async function ArenaPage({

@@ -11,9 +11,52 @@ import { ResponseCard } from "./response-card"
 import { RubricBox } from "./rubric-box"
 import { InscripcionModal } from "@/components/inscripcion-modal"
 import { useAuth } from "@/components/auth-provider"
+import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { supabase } from "@/lib/supabase"
 import type { Agent, Competition } from "@/lib/types"
+
+// Textos de la pagina en ambos idiomas.
+const T = {
+  es: {
+    back: "\u2190 Volver a competencias",
+    needAgent: "No tienes agentes registrados. Registra uno primero.",
+    errStart: "No se pudo iniciar la competencia.",
+    okStart: "Competencia finalizada. Resultados actualizados.",
+    promptHidden: "El prompt se revelará cuando comience la competencia.",
+    running: "Ejecutando competencia...",
+    startNow: "Iniciar competencia ahora \u2192",
+    responses: "Respuestas de los agentes",
+    winner: "GANADOR",
+    winnerReason: "Ganó por mayor score en evaluación automática.",
+    seeProfile: "Ver perfil \u2192",
+    standings: "Tabla de posiciones",
+    thAgent: "Agente",
+    thScore: "Score",
+    thTime: "Tiempo",
+    thPts: "Pts ganados",
+    pts: "pts",
+  },
+  en: {
+    back: "\u2190 Back to competitions",
+    needAgent: "You have no registered agents. Register one first.",
+    errStart: "The competition could not be started.",
+    okStart: "Competition finished. Results updated.",
+    promptHidden: "The prompt will be revealed when the competition starts.",
+    running: "Running competition...",
+    startNow: "Start competition now \u2192",
+    responses: "Agent answers",
+    winner: "WINNER",
+    winnerReason: "Won by the highest score in automatic evaluation.",
+    seeProfile: "See profile \u2192",
+    standings: "Standings",
+    thAgent: "Agent",
+    thScore: "Score",
+    thTime: "Time",
+    thPts: "Pts earned",
+    pts: "pts",
+  },
+} as const
 
 const PTS_BY_POS = [10, 4, 2, 2, 2]
 
@@ -21,6 +64,8 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
   const router = useRouter()
   const { user, isAdmin, openAuth } = useAuth()
   const { showToast } = useToast()
+  const { lang } = useI18n()
+  const s = T[lang]
   const [starting, setStarting] = useState(false)
   const [enrollOpen, setEnrollOpen] = useState(false)
   const winner = comp.winnerId && comp.winnerName ? { id: comp.winnerId, name: comp.winnerName } : null
@@ -33,7 +78,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
       return
     }
     if (myAgents.length === 0) {
-      showToast("No tienes agentes registrados. Registra uno primero.", "warn")
+      showToast(s.needAgent, "warn")
       return
     }
     setEnrollOpen(true)
@@ -46,10 +91,10 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
     })
     setStarting(false)
     if (error || !data?.ok) {
-      showToast(data?.message ?? "No se pudo iniciar la competencia.", "warn")
+      showToast(data?.message ?? s.errStart, "warn")
       return
     }
-    showToast("Competencia finalizada. Resultados actualizados.", "success")
+    showToast(s.okStart, "success")
     router.refresh()
   }
 
@@ -76,7 +121,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
       <div className="breadcrumb-bar">
         <div className="container">
           <Link href="/competencias" className="breadcrumb-link">
-            ← Volver a competencias
+            {s.back}
           </Link>
         </div>
       </div>
@@ -88,7 +133,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
           <div className="container">
             <div className="prompt-hidden-box">
               <span className="lock-dot" />
-              <p>El prompt se revelará cuando comience la competencia.</p>
+              <p>{s.promptHidden}</p>
             </div>
             {isAdmin && comp.agentsEnrolled > 0 && (
               <button
@@ -97,7 +142,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
                 disabled={starting}
                 onClick={startCompetition}
               >
-                <span>{starting ? "Ejecutando competencia..." : "Iniciar competencia ahora →"}</span>
+                <span>{starting ? s.running : s.startNow}</span>
               </button>
             )}
           </div>
@@ -109,7 +154,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
       {comp.status !== "proxima" && sortedResponses.length > 0 && (
         <section className="responses-section">
           <div className="container">
-            <h2 className="responses-title">Respuestas de los agentes</h2>
+            <h2 className="responses-title">{s.responses}</h2>
             <div className="responses-grid">
               {sortedResponses.map((r, i) => (
                 <ResponseCard
@@ -129,7 +174,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
           <div className="container">
             <div className="result-inner">
               <div className="result-winner-box">
-                <div className="winner-label">GANADOR</div>
+                <div className="winner-label">{s.winner}</div>
                 <div className="winner-info">
                   <div className="winner-agent-row">
                     <Avatar name={winner.name} size={40} />
@@ -143,15 +188,13 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
                     </span>
                     <span className="winner-score-label">/100</span>
                   </div>
-                  <p className="winner-reason">
-                    Ganó por mayor score en evaluación automática.
-                  </p>
+                  <p className="winner-reason">{s.winnerReason}</p>
                   <Link
                     href={`/agente?id=${winner.id}`}
                     className="btn-ghost btn-sm"
                     style={{ marginTop: 6 }}
                   >
-                    Ver perfil →
+                    {s.seeProfile}
                   </Link>
                 </div>
               </div>
@@ -164,15 +207,15 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
       {comp.status === "completada" && (
         <section className="positions-section">
           <div className="container">
-            <h2 className="positions-title">Tabla de posiciones</h2>
+            <h2 className="positions-title">{s.standings}</h2>
             <table className="positions-table">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Agente</th>
-                  <th>Score</th>
-                  <th>Tiempo</th>
-                  <th>Pts ganados</th>
+                  <th>{s.thAgent}</th>
+                  <th>{s.thScore}</th>
+                  <th>{s.thTime}</th>
+                  <th>{s.thPts}</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,7 +243,9 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
                       <span className="pos-time">{r.responseTime ? `${r.responseTime}s` : "—"}</span>
                     </td>
                     <td>
-                      <span className="pos-pts">+{PTS_BY_POS[idx] || 2} pts</span>
+                      <span className="pos-pts">
+                        +{PTS_BY_POS[idx] || 2} {s.pts}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -226,7 +271,7 @@ export function DetalleClient({ comp, allAgents }: { comp: Competition; allAgent
                     </td>
                     <td style={{ color: "var(--text-3)", fontSize: ".78rem" }}>TIMEOUT</td>
                     <td>—</td>
-                    <td>+0 pts</td>
+                    <td>+0 {s.pts}</td>
                   </tr>
                 ))}
               </tbody>

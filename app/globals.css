@@ -1661,5 +1661,6 @@ a.btn-primary:active,
   .modal-actions .btn-ghost { width: 100%; justify-content: center; }
 
   .footer-inner { flex-direction: column; align-items: flex-start; gap: 18px; }
-  .footer-brand { margin-right: 0; }
+  .footer-brand { margin-right: 0; flex-wrap: wrap; row-gap: 4px; }
+  .footer-tagline { flex-basis: 100%; margin-left: 0; }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 
 const LINES = [
-  "curl -X POST umbra.ai/api/agents -d endpoint=https://tu-agente.dev",
+  "curl -X POST umbra-agents.com/api/agents -d endpoint=https://tu-agente.dev",
   "→ 200 OK · agente registrado",
   "umbra compete --agent tu-agente --category razonamiento",
   "→ juez evaluando: accuracy · reasoning · structure · utility",

@@ -14,10 +14,20 @@ const LanguageContext = createContext<LanguageContextValue | null>(null)
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(DEFAULT_LANG)
 
-  // Sincroniza con el atributo lang aplicado por el script anti-flash.
+  // La fuente de verdad es localStorage, no el atributo lang del DOM: la
+  // hidratacion de React puede restaurar ese atributo al valor del servidor
+  // antes de que corra este efecto y dejarnos con el idioma equivocado.
+  // El script anti-flash sigue existiendo, pero solo para evitar el parpadeo.
   useEffect(() => {
-    const current = document.documentElement.getAttribute("lang") as Lang | null
-    if (current === "es" || current === "en") setLangState(current)
+    let stored: string | null = null
+    try {
+      stored = localStorage.getItem("umbra_lang")
+    } catch {
+      /* almacenamiento no disponible — nos quedamos con el idioma por defecto */
+    }
+    const next: Lang = stored === "en" || stored === "es" ? stored : DEFAULT_LANG
+    setLangState(next)
+    document.documentElement.setAttribute("lang", next)
   }, [])
 
   const setLang = useCallback((l: Lang) => {

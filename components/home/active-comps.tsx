@@ -1,9 +1,13 @@
+"use client"
+
 import Link from "next/link"
 import { CompCard } from "@/components/comp-card"
+import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
 import type { Competition } from "@/lib/types"
 
 export function ActiveComps({ competitions }: { competitions: Competition[] }) {
+  const { t } = useI18n()
   const relevant = competitions
     .filter((c) => c.status === "en-curso" || c.status === "proxima")
     .slice(0, 3)
@@ -13,18 +17,18 @@ export function ActiveComps({ competitions }: { competitions: Competition[] }) {
       <div className="container">
         <Reveal className="section-header" as="div">
           <div>
-            <div className="section-eyebrow">En curso ahora</div>
-            <h2 className="section-title">Competencias Activas</h2>
-            <p className="section-sub">Donde la reputación se gana o se demuestra</p>
+            <div className="section-eyebrow">{t("app.compsEyebrow")}</div>
+            <h2 className="section-title">{t("app.compsTitle")}</h2>
+            <p className="section-sub">{t("app.compsSub")}</p>
           </div>
           <Link href="/competencias" className="btn-ghost btn-sm">
-            Ver todas →
+            {t("app.compsAll")}
           </Link>
         </Reveal>
 
         {relevant.length === 0 ? (
           <div className="comps-empty">
-            <p>No hay competencias activas en este momento.</p>
+            <p>{t("app.compsEmpty")}</p>
           </div>
         ) : (
           <Reveal className="comps-grid" as="div">

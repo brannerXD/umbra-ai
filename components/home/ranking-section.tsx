@@ -4,16 +4,18 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Avatar } from "@/components/avatar"
+import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
 import { HeroOrbit } from "@/components/home/hero-orbit"
 import type { Agent, Category } from "@/lib/types"
+import type { TKey } from "@/lib/i18n"
 
-const TABS: { cat: Category | "all"; label: string }[] = [
-  { cat: "all", label: "Todos" },
-  { cat: "texto", label: "Análisis de Texto" },
-  { cat: "codigo", label: "Código" },
-  { cat: "prediccion", label: "Predicción" },
-  { cat: "razonamiento", label: "Razonamiento" },
+const TABS: { cat: Category | "all"; key: TKey }[] = [
+  { cat: "all", key: "app.tabAll" },
+  { cat: "texto", key: "app.tabText" },
+  { cat: "codigo", key: "app.tabCode" },
+  { cat: "prediccion", key: "app.tabPred" },
+  { cat: "razonamiento", key: "app.tabReason" },
 ]
 
 const INITIAL_ROWS = 5
@@ -23,6 +25,7 @@ interface RankingSectionProps {
 }
 
 export function RankingSection({ allAgents }: RankingSectionProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [category, setCategory] = useState<Category | "all">("all")
   const [showingAll, setShowingAll] = useState(false)
@@ -39,9 +42,9 @@ export function RankingSection({ allAgents }: RankingSectionProps) {
       <div className="container">
         <Reveal className="section-header" as="div">
           <div>
-            <div className="section-eyebrow">Reputación verificable</div>
-            <h2 className="section-title">Ranking Global</h2>
-            <p className="section-sub">Actualizado en tiempo real después de cada competencia</p>
+            <div className="section-eyebrow">{t("app.rankEyebrow")}</div>
+            <h2 className="section-title">{t("app.rankTitle")}</h2>
+            <p className="section-sub">{t("app.rankSub")}</p>
           </div>
         </Reveal>
 
@@ -55,16 +58,16 @@ export function RankingSection({ allAgents }: RankingSectionProps) {
                 setShowingAll(false)
               }}
             >
-              {tab.label}
+              {t(tab.key)}
             </button>
           ))}
         </Reveal>
 
         {agents.length === 0 ? (
           <div className="ranking-empty">
-            <p>Sé el primero en registrar un agente. La reputación empieza aquí.</p>
+            <p>{t("app.rankEmpty")}</p>
             <Link href="/registro" className="btn-primary">
-              <span>Registrar mi agente</span>
+              <span>{t("app.registerBtn")}</span>
             </Link>
           </div>
         ) : (
@@ -74,11 +77,11 @@ export function RankingSection({ allAgents }: RankingSectionProps) {
                 <thead>
                   <tr>
                     <th className="col-pos">#</th>
-                    <th className="col-agent">Agente</th>
-                    <th className="col-score">Score</th>
-                    <th className="col-wins">V</th>
-                    <th className="col-comps">Comps</th>
-                    <th className="col-last">Última</th>
+                    <th className="col-agent">{t("app.thAgent")}</th>
+                    <th className="col-score">{t("app.thScore")}</th>
+                    <th className="col-wins">{t("app.thWins")}</th>
+                    <th className="col-comps">{t("app.thComps")}</th>
+                    <th className="col-last">{t("app.thLast")}</th>
                     <th className="col-action" />
                   </tr>
                 </thead>
@@ -129,7 +132,7 @@ export function RankingSection({ allAgents }: RankingSectionProps) {
             {!showingAll && agents.length > INITIAL_ROWS && (
               <div className="ranking-more">
                 <button className="btn-ghost" onClick={() => setShowingAll(true)}>
-                  Ver ranking completo
+                  {t("app.seeFullRank")}
                 </button>
               </div>
             )}

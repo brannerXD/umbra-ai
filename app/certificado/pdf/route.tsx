@@ -7,11 +7,14 @@ import {
   getCertificateIssuances,
   issueCertificate,
 } from "@/lib/services"
+import type { Lang } from "@/lib/i18n"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const id = searchParams.get("id")
   const isMobile = searchParams.get("format") === "mobile"
+  // El idioma lo elige el usuario en el cliente y viaja por query param.
+  const lang: Lang = searchParams.get("lang") === "en" ? "en" : "es"
   const agent = id ? await getAgentById(id) : null
 
   if (!agent || agent.comps < MIN_COMPS_FOR_CERTIFICATE) {
@@ -25,18 +28,18 @@ export async function GET(request: Request) {
 
   const issuances = await getCertificateIssuances(agent.id)
   const document = isMobile ? (
-    <CertificateMobilePdf agent={agent} issuance={issuance} totalIssued={issuances.length} />
+    <CertificateMobilePdf agent={agent} issuance={issuance} totalIssued={issuances.length} lang={lang} />
   ) : (
-    <CertificatePdf agent={agent} issuance={issuance} totalIssued={issuances.length} />
+    <CertificatePdf agent={agent} issuance={issuance} totalIssued={issuances.length} lang={lang} />
   )
   const buffer = await renderToBuffer(document)
 
   const slug = agent.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-  const suffix = isMobile ? "-movil" : ""
+  const suffix = isMobile ? (lang === "en" ? "-mobile" : "-movil") : ""
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="certificado-${slug}${suffix}.pdf"`,
+      "Content-Disposition": `attachment; filename="${lang === "en" ? "certificate" : "certificado"}-${slug}${suffix}.pdf"`,
     },
   })
 }

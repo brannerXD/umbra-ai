@@ -1,6 +1,13 @@
 "use client"
 
+import { useI18n } from "@/components/language-provider"
 import type { ArenaResult } from "./arena-types"
+
+// Textos en ambos idiomas.
+const T = {
+  es: { waiting: "Esperando respuestas..." },
+  en: { waiting: "Waiting for answers..." },
+} as const
 
 export function LiveRanking({
   ranked,
@@ -9,10 +16,13 @@ export function LiveRanking({
   ranked: ArenaResult[]
   winnerId?: string | null
 }) {
+  const { lang } = useI18n()
+  const s = T[lang]
+
   if (ranked.length === 0) {
     return (
       <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--text-3)" }}>
-        Esperando respuestas...
+        {s.waiting}
       </p>
     )
   }

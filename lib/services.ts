@@ -10,6 +10,7 @@ import type {
   ActivityEvent,
   Agent,
   AgentHistoryEntry,
+  AgentLicense,
   AgentVersion,
   BillingModel,
   Category,
@@ -28,6 +29,12 @@ import type {
 
 // ── MAPEOS DB → UI ───────────────────────
 
+// Columnas de agents que si puede leer el cliente. El endpoint del vendedor
+// queda deliberadamente fuera: es el activo que protege la licencia por URL,
+// y a nivel de base de datos tambien esta revocado para anon/authenticated.
+const AGENT_COLS =
+  "id, name, description, category, category_label, owner_id, verified, archived, score, wins, comps_count, avg_score, last_comp, score_evolution"
+
 interface AgentRow {
   id: string
   name: string
@@ -35,7 +42,6 @@ interface AgentRow {
   category: string
   category_label: string | null
   owner_id: string | null
-  endpoint: string | null
   verified: boolean | null
   archived: boolean | null
   score: number | null
@@ -54,7 +60,6 @@ function mapAgent(row: AgentRow, history: AgentHistoryEntry[] = []): Agent {
     category: row.category as Category,
     categoryLabel: row.category_label ?? getCategoryLabel(row.category),
     ownerId: row.owner_id,
-    endpoint: row.endpoint ?? "",
     verified: row.verified ?? false,
     archived: row.archived ?? false,
     score: row.score ?? 0,
@@ -162,7 +167,7 @@ async function fetchResultsForCompetition(competitionId: string, status: string)
 export async function listAgents(): Promise<Agent[]> {
   const { data, error } = await supabase
     .from("agents")
-    .select("*")
+    .select(AGENT_COLS)
     .eq("archived", false)
     .order("score", { ascending: false })
   if (error || !data) return []
@@ -225,14 +230,14 @@ export async function getAgentHistory(agentId: string): Promise<AgentHistoryEntr
 }
 
 export async function getAgentById(id: string): Promise<Agent | null> {
-  const { data, error } = await supabase.from("agents").select("*").eq("id", id).maybeSingle()
+  const { data, error } = await supabase.from("agents").select(AGENT_COLS).eq("id", id).maybeSingle()
   if (error || !data) return null
   const history = await getAgentHistory(id)
   return mapAgent(data as AgentRow, history)
 }
 
 export async function getRankedAgents(category: Category | "all" = "all"): Promise<Agent[]> {
-  let query = supabase.from("agents").select("*").eq("archived", false).order("score", { ascending: false })
+  let query = supabase.from("agents").select(AGENT_COLS).eq("archived", false).order("score", { ascending: false })
   if (category !== "all") query = query.eq("category", category)
   const { data, error } = await query
   if (error || !data) return []
@@ -241,7 +246,7 @@ export async function getRankedAgents(category: Category | "all" = "all"): Promi
 
 export async function getAgentsByOwner(ownerId: string | null): Promise<Agent[]> {
   if (!ownerId) return []
-  const { data, error } = await supabase.from("agents").select("*").eq("owner_id", ownerId)
+  const { data, error } = await supabase.from("agents").select(AGENT_COLS).eq("owner_id", ownerId)
   if (error || !data) return []
   return data.map((row) => mapAgent(row as AgentRow))
 }
@@ -275,7 +280,7 @@ export async function registerAgent(input: {
       owner_id: input.ownerId,
       verified: true,
     })
-    .select("*")
+    .select(AGENT_COLS)
     .single()
 
   if (error || !data) {
@@ -458,7 +463,7 @@ function mapListing(row: ListingRow): MarketplaceListingWithAgent {
 export async function getMarketplaceListings(): Promise<MarketplaceListingWithAgent[]> {
   const { data, error } = await supabase
     .from("marketplace_listings")
-    .select("*, agents(*, profiles(username))")
+    .select(`*, agents(${AGENT_COLS}, profiles(username))`)
     .eq("listed", true)
   if (error || !data) return []
   return (data as unknown as ListingRow[]).filter((r) => r.agents).map(mapListing)
@@ -467,7 +472,7 @@ export async function getMarketplaceListings(): Promise<MarketplaceListingWithAg
 export async function getListingByAgentId(agentId: string): Promise<MarketplaceListingWithAgent | null> {
   const { data, error } = await supabase
     .from("marketplace_listings")
-    .select("*, agents(*, profiles(username))")
+    .select(`*, agents(${AGENT_COLS}, profiles(username))`)
     .eq("agent_id", agentId)
     .eq("listed", true)
     .maybeSingle()
@@ -674,7 +679,7 @@ export async function getPurchasedAgents(buyerId: string): Promise<PurchasedAgen
   const { data, error } = await supabase
     .from("purchases")
     .select(
-      "id, listing_id, status, created_at, version_id, marketplace_listings(*, agents(*, profiles(username)), agent_versions(*))",
+      `id, listing_id, status, created_at, version_id, marketplace_listings(*, agents(${AGENT_COLS}, profiles(username)), agent_versions(*)), agent_licenses(id, key_prefix, status, calls_count, last_used_at, created_at)`,
     )
     .eq("buyer_id", buyerId)
     .order("created_at", { ascending: false })
@@ -693,6 +698,8 @@ export async function getPurchasedAgents(buyerId: string): Promise<PurchasedAgen
         ? versions.find((v) => v.id === p.version_id)?.version ?? null
         : null
       const hasUpdate = !!boughtVersion && !!latestVersion && boughtVersion !== latestVersion
+      const licRow = (p as unknown as { agent_licenses: LicenseRow[] | LicenseRow | null }).agent_licenses
+      const lic = Array.isArray(licRow) ? licRow[0] ?? null : licRow
       return {
         purchaseId: p.id,
         listing: mapListing(listingRow),
@@ -702,6 +709,16 @@ export async function getPurchasedAgents(buyerId: string): Promise<PurchasedAgen
         latestVersion,
         hasUpdate,
         versions,
+        license: lic
+          ? {
+              id: lic.id,
+              keyPrefix: lic.key_prefix,
+              status: lic.status as AgentLicense["status"],
+              callsCount: Number(lic.calls_count ?? 0),
+              lastUsedAt: lic.last_used_at ? new Date(lic.last_used_at) : null,
+              createdAt: new Date(lic.created_at),
+            }
+          : null,
       } satisfies PurchasedAgent
     })
 }
@@ -920,4 +937,31 @@ export async function getCertificateIssuances(agentId: string): Promise<Certific
 
   if (error || !data) return []
   return data.map((row) => mapCertificateIssuance(row as CertificateIssuanceRow))
+}
+
+// ── LICENCIAS DE ACCESO POR API ──────────
+
+interface LicenseRow {
+  id: string
+  key_prefix: string
+  status: string
+  calls_count: number | string | null
+  last_used_at: string | null
+  created_at: string
+}
+
+/**
+ * Emite (o rota) la llave de una compra de tipo "acceso".
+ * Devuelve la llave EN CLARO, que solo se puede ver este momento: la base
+ * guarda unicamente su hash. Si se pierde, hay que volver a emitir.
+ */
+export async function issueLicense(purchaseId: string): Promise<
+  { ok: true; key: string } | { ok: false; message: string }
+> {
+  const { data, error } = await supabase.rpc("issue_license", { p_purchase_id: purchaseId })
+  if (error || typeof data !== "string") {
+    console.error("issueLicense failed", error)
+    return { ok: false, message: error?.message ?? "No se pudo emitir la licencia." }
+  }
+  return { ok: true, key: data }
 }

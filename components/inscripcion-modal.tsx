@@ -1,10 +1,39 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getInitials } from "@/lib/umbra"
+import { getCategoryLabel, getInitials } from "@/lib/umbra"
 import { enrollAgent } from "@/lib/services"
+import { useI18n } from "./language-provider"
 import { useToast } from "./toast-provider"
 import type { Agent, Competition } from "@/lib/types"
+
+// Textos del modal en ambos idiomas.
+const T = {
+  es: {
+    close: "Cerrar",
+    title: "Inscribir agente en:",
+    sub: "Selecciona tu agente para esta competencia",
+    score: "Score:",
+    warn: "Tu agente recibirá un prompt y deberá responder en máximo 10 segundos.",
+    cancel: "Cancelar",
+    submit: "Inscribir agente",
+    submitting: "Inscribiendo...",
+    ok: "Tu agente fue inscrito. Comenzará cuando la competencia inicie.",
+    err: "No se pudo inscribir el agente. Intenta de nuevo.",
+  },
+  en: {
+    close: "Close",
+    title: "Enter an agent in:",
+    sub: "Select your agent for this competition",
+    score: "Score:",
+    warn: "Your agent will receive a prompt and must answer within 10 seconds.",
+    cancel: "Cancel",
+    submit: "Enter agent",
+    submitting: "Entering...",
+    ok: "Your agent is entered. It will start when the competition begins.",
+    err: "The agent could not be entered. Please try again.",
+  },
+} as const
 
 interface InscripcionModalProps {
   comp: Competition | null
@@ -15,6 +44,8 @@ interface InscripcionModalProps {
 
 export function InscripcionModal({ comp, myAgents, onClose, onEnrolled }: InscripcionModalProps) {
   const { showToast } = useToast()
+  const { lang } = useI18n()
+  const s = T[lang]
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -39,9 +70,9 @@ export function InscripcionModal({ comp, myAgents, onClose, onEnrolled }: Inscri
     if (ok) {
       onClose()
       onEnrolled()
-      showToast("Tu agente fue inscrito. Comenzará cuando la competencia inicie.", "success")
+      showToast(s.ok, "success")
     } else {
-      showToast("No se pudo inscribir el agente. Intenta de nuevo.", "warn")
+      showToast(s.err, "warn")
     }
   }
 
@@ -53,12 +84,12 @@ export function InscripcionModal({ comp, myAgents, onClose, onEnrolled }: Inscri
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="modal-box modal-lg">
-        <button className="modal-close" onClick={onClose} aria-label="Cerrar">
+        <button className="modal-close" onClick={onClose} aria-label={s.close}>
           ✕
         </button>
-        <h3 className="modal-title">Inscribir agente en:</h3>
+        <h3 className="modal-title">{s.title}</h3>
         <p className="modal-comp-name">{comp.name}</p>
-        <p className="modal-sub">Selecciona tu agente para esta competencia</p>
+        <p className="modal-sub">{s.sub}</p>
 
         <div className="agent-options">
           {myAgents.map((a) => (
@@ -70,24 +101,28 @@ export function InscripcionModal({ comp, myAgents, onClose, onEnrolled }: Inscri
               <div className="agent-avatar-sm">{getInitials(a.name)}</div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: ".88rem" }}>{a.name}</div>
-                <div style={{ fontSize: ".75rem", color: "var(--text-3)" }}>{a.categoryLabel}</div>
+                <div style={{ fontSize: ".75rem", color: "var(--text-3)" }}>
+                  {getCategoryLabel(a.category, lang)}
+                </div>
               </div>
-              <span className="agent-opt-score">Score: {a.score}</span>
+              <span className="agent-opt-score">
+                {s.score} {a.score}
+              </span>
             </button>
           ))}
         </div>
 
         <div className="modal-warning">
           <span className="warn-icon">!</span>
-          Tu agente recibirá un prompt y deberá responder en máximo 10 segundos.
+          {s.warn}
         </div>
 
         <div className="modal-actions">
           <button className="btn-ghost" onClick={onClose}>
-            Cancelar
+            {s.cancel}
           </button>
           <button className="btn-primary" disabled={!selectedAgent || submitting} onClick={confirm}>
-            <span>{submitting ? "Inscribiendo..." : "Inscribir agente"}</span>
+            <span>{submitting ? s.submitting : s.submit}</span>
           </button>
         </div>
       </div>

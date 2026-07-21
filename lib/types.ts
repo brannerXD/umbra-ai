@@ -24,7 +24,6 @@ export interface Agent {
   category: Category
   categoryLabel: string
   ownerId: string | null
-  endpoint: string
   verified: boolean
   archived: boolean
   score: number
@@ -146,6 +145,16 @@ export interface MarketplaceListingWithAgent extends MarketplaceListing {
 }
 
 // Un agente que el usuario COMPRÓ (para "Mis Agentes Comprados").
+/** Licencia de acceso por API. La llave en claro solo existe al emitirla. */
+export interface AgentLicense {
+  id: string
+  keyPrefix: string
+  status: "activa" | "revocada"
+  callsCount: number
+  lastUsedAt: Date | null
+  createdAt: Date
+}
+
 export interface PurchasedAgent {
   purchaseId: string
   listing: MarketplaceListingWithAgent
@@ -159,6 +168,8 @@ export interface PurchasedAgent {
   hasUpdate: boolean
   /** Todas las versiones disponibles (para descargar la que corresponda). */
   versions: AgentVersion[]
+  /** Licencia de API para los listados "acceso"; null si aun no la ha emitido. */
+  license: AgentLicense | null
 }
 
 // Métricas del panel del vendedor (las calcula la función `seller_stats`).
