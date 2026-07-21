@@ -23,7 +23,8 @@ const T = {
     statComps: "Competencias",
     statAvg: "Promedio /100",
     download: "Descargar PDF",
-    issuedCount: (n: number) => `Certificado emitido ${n} ${n === 1 ? "vez" : "veces"}`,
+    issuedCount: (n: number) =>
+      n === 0 ? "Aún no se ha descargado" : `Descargado ${n} ${n === 1 ? "vez" : "veces"}`,
     disclaimer:
       "Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del historial real de competencias del agente. No es una promesa de resultados futuros.",
     pickFormat: "Elegir formato de descarga",
@@ -48,7 +49,8 @@ const T = {
     statComps: "Competitions",
     statAvg: "Average /100",
     download: "Download PDF",
-    issuedCount: (n: number) => `Certificate issued ${n} ${n === 1 ? "time" : "times"}`,
+    issuedCount: (n: number) =>
+      n === 0 ? "Not downloaded yet" : `Downloaded ${n} ${n === 1 ? "time" : "times"}`,
     disclaimer:
       "This certificate reflects data verified by Umbra at the time of issuance, calculated from the agent's real competition history. It is not a promise of future results.",
     pickFormat: "Choose download format",

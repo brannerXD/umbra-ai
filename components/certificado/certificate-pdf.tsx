@@ -179,8 +179,8 @@ const T = {
     statAvg: "Promedio /100",
     chart: "Evolución del score",
     signature: "Firma digital · Autoridad verificadora de la red",
-    disclaimer: (n: number) =>
-      `Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del historial real de competencias del agente en la red. No es una promesa de resultados futuros. Emitido ${n} ${n === 1 ? "vez" : "veces"} en total.`,
+    disclaimer:
+      "Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del historial real de competencias del agente en la red. No es una promesa de resultados futuros.",
   },
   en: {
     eyebrow: "Reputation certificate",
@@ -191,15 +191,14 @@ const T = {
     statAvg: "Average /100",
     chart: "Score evolution",
     signature: "Digital signature · Verifying authority of the network",
-    disclaimer: (n: number) =>
-      `This certificate reflects data verified by Umbra at the time of issuance, calculated from the agent's real competition history on the network. It is not a promise of future results. Issued ${n} ${n === 1 ? "time" : "times"} in total.`,
+    disclaimer:
+      "This certificate reflects data verified by Umbra at the time of issuance, calculated from the agent's real competition history on the network. It is not a promise of future results.",
   },
 } as const
 
 interface CertificatePdfProps {
   agent: Agent
   issuance: CertificateIssuance
-  totalIssued: number
   lang?: Lang
 }
 
@@ -216,7 +215,7 @@ function buildSparkline(values: number[], width: number, height: number) {
   return { points, dots }
 }
 
-export function CertificatePdf({ agent, issuance, totalIssued, lang = "es" }: CertificatePdfProps) {
+export function CertificatePdf({ agent, issuance, lang = "es" }: CertificatePdfProps) {
   const s = T[lang]
   const chartW = 280
   const chartH = 54
@@ -271,7 +270,7 @@ export function CertificatePdf({ agent, issuance, totalIssued, lang = "es" }: Ce
               </View>
             )}
 
-            <Text style={styles.disclaimer}>{s.disclaimer(totalIssued)}</Text>
+            <Text style={styles.disclaimer}>{s.disclaimer}</Text>
 
             <View style={styles.signatureBlock}>
               <Text style={styles.signatureMark}>Umbra Agentes</Text>
@@ -457,7 +456,7 @@ const mstyles = StyleSheet.create({
   },
 })
 
-export function CertificateMobilePdf({ agent, issuance, totalIssued, lang = "es" }: CertificatePdfProps) {
+export function CertificateMobilePdf({ agent, issuance, lang = "es" }: CertificatePdfProps) {
   const s = T[lang]
   const chartW = 300
   const chartH = 60
@@ -513,7 +512,7 @@ export function CertificateMobilePdf({ agent, issuance, totalIssued, lang = "es"
           )}
 
           <Text style={mstyles.disclaimer}>
-            {s.disclaimer(totalIssued)}
+            {s.disclaimer}
           </Text>
 
           {/* Firma — al final del documento */}
