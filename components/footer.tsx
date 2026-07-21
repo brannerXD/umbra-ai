@@ -1,10 +1,15 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
+import { FeedbackModal, useFeedbackLabel } from "./feedback-modal"
 import { useI18n } from "./language-provider"
 
 export function Footer() {
   const { t } = useI18n()
+  const feedbackLabel = useFeedbackLabel()
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+
   return (
     <footer className="footer">
       <div className="container footer-inner">
@@ -21,9 +26,15 @@ export function Footer() {
           <a href="https://github.com/brannerXD/umbra-ai" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
+          {/* Va al final y con estilo de enlace para no competir con la navegacion. */}
+          <button type="button" className="footer-feedback" onClick={() => setFeedbackOpen(true)}>
+            {feedbackLabel}
+          </button>
         </div>
         <p className="footer-copy">{t("footer.copy")}</p>
       </div>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </footer>
   )
 }

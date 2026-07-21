@@ -2,15 +2,23 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { ReputationJourney } from "./reputation-journey"
 import { Avatar } from "@/components/avatar"
 import { AvatarPicker } from "@/components/avatar-picker"
 import { useAuth } from "@/components/auth-provider"
 import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { useNow } from "@/hooks/use-now"
-import { archiveAgent, getActivityForUser, getAgentsByOwner, getUserProfile, updateProfile } from "@/lib/services"
+import {
+  archiveAgent,
+  getActivityForUser,
+  getAgentsByOwner,
+  getMyJourney,
+  getUserProfile,
+  updateProfile,
+} from "@/lib/services"
 import { formatTime } from "@/lib/umbra"
-import type { ActivityEvent, Agent, UserProfile } from "@/lib/types"
+import type { ActivityEvent, Agent, ReputationJourney as Journey, UserProfile } from "@/lib/types"
 
 const COOLDOWN_DAYS = 60
 
@@ -103,6 +111,7 @@ export function PerfilClient() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
   const [activity, setActivity] = useState<ActivityEvent[]>([])
+  const [journey, setJourney] = useState<Journey | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [usernameDraft, setUsernameDraft] = useState("")
@@ -121,17 +130,21 @@ export function PerfilClient() {
       setLoading(false)
       return
     }
-    Promise.all([getUserProfile(user.id), getAgentsByOwner(user.id), getActivityForUser(user.id)]).then(
-      ([p, a, act]) => {
-        setProfile(p)
-        setUsernameDraft(p?.username ?? "")
-        setBioDraft(p?.bio ?? "")
-        setAgents(a)
-        setActivity(act)
-        setLoading(false)
-      },
-    )
-  }, [user])
+    Promise.all([
+      getUserProfile(user.id),
+      getAgentsByOwner(user.id),
+      getActivityForUser(user.id, lang),
+      getMyJourney(),
+    ]).then(([p, a, act, j]) => {
+      setProfile(p)
+      setUsernameDraft(p?.username ?? "")
+      setBioDraft(p?.bio ?? "")
+      setAgents(a)
+      setActivity(act)
+      setJourney(j)
+      setLoading(false)
+    })
+  }, [user, lang])
 
   async function saveUsername() {
     if (!user || !usernameDraft.trim()) return
@@ -229,6 +242,12 @@ export function PerfilClient() {
       </section>
 
       <section className="perfil-section">
+        <div className="container">
+          <ReputationJourney data={journey} />
+        </div>
+      </section>
+
+      <section className="perfil-section perfil-section-sin-tope">
         <div className="container perfil-grid">
           <div className="perfil-col">
             <h2 className="section-title-sm">{s.customize}</h2>
