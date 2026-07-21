@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { Avatar } from "@/components/avatar"
 import { AvatarPicker } from "@/components/avatar-picker"
 import { useAuth } from "@/components/auth-provider"
+import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { useNow } from "@/hooks/use-now"
 import { archiveAgent, getActivityForUser, getAgentsByOwner, getUserProfile, updateProfile } from "@/lib/services"
@@ -13,6 +14,82 @@ import type { ActivityEvent, Agent, UserProfile } from "@/lib/types"
 
 const COOLDOWN_DAYS = 60
 
+// Textos de la pagina en ambos idiomas.
+const T = {
+  es: {
+    guest: "Inicia sesión para ver y personalizar tu perfil.",
+    signIn: "Iniciar sesión",
+    loading: "Cargando perfil...",
+    changeAvatar: "Cambiar avatar",
+    change: "Cambiar",
+    customize: "Personalizar perfil",
+    nickname: "Apodo",
+    save: "Guardar",
+    cooldownOk: "Puedes cambiar tu apodo. Después de guardarlo, esperarás 60 días para volver a cambiarlo.",
+    cooldownWait: (d: string) => `Podrás cambiar tu apodo de nuevo el ${d}.`,
+    bio: "Descripción",
+    bioPlaceholder: "Cuéntale a la red quién eres...",
+    saveBio: "Guardar descripción",
+    savingBio: "Guardando...",
+    myAgents: "Mis agentes",
+    noAgents: "Aún no has registrado ningún agente.",
+    archived: "Archivado",
+    archive: "Archivar",
+    activity: "Actividad",
+    noActivity: "Sin actividad todavía.",
+    avatarSubtitle: "Elige un avatar predeterminado o sube tu propia foto.",
+    close: "Cerrar",
+    archiveTitle: (n: string) => `Archivar ${n}`,
+    archiveSub:
+      "El agente desaparecerá del ranking público y se quitará del marketplace si estaba listado. Su historial de competencias se conserva. Esta acción no borra nada de forma permanente.",
+    cancel: "Cancelar",
+    archiving: "Archivando...",
+    archiveConfirm: "Archivar agente",
+    errUpdate: "No se pudo actualizar.",
+    okNickname: "Apodo actualizado.",
+    okBio: "Descripción actualizada.",
+    errArchive: "No se pudo archivar el agente.",
+    okArchive: (n: string) => `${n} fue archivado.`,
+    dateLocale: "es-CO",
+  },
+  en: {
+    guest: "Sign in to view and customize your profile.",
+    signIn: "Sign in",
+    loading: "Loading profile...",
+    changeAvatar: "Change avatar",
+    change: "Change",
+    customize: "Customize profile",
+    nickname: "Nickname",
+    save: "Save",
+    cooldownOk: "You can change your nickname. After saving it, you will wait 60 days to change it again.",
+    cooldownWait: (d: string) => `You can change your nickname again on ${d}.`,
+    bio: "Bio",
+    bioPlaceholder: "Tell the network who you are...",
+    saveBio: "Save bio",
+    savingBio: "Saving...",
+    myAgents: "My agents",
+    noAgents: "You have not registered any agent yet.",
+    archived: "Archived",
+    archive: "Archive",
+    activity: "Activity",
+    noActivity: "No activity yet.",
+    avatarSubtitle: "Pick a default avatar or upload your own photo.",
+    close: "Close",
+    archiveTitle: (n: string) => `Archive ${n}`,
+    archiveSub:
+      "The agent will disappear from the public ranking and be removed from the marketplace if it was listed. Its competition history is preserved. This action does not delete anything permanently.",
+    cancel: "Cancel",
+    archiving: "Archiving...",
+    archiveConfirm: "Archive agent",
+    errUpdate: "Could not update.",
+    okNickname: "Nickname updated.",
+    okBio: "Bio updated.",
+    errArchive: "Could not archive the agent.",
+    okArchive: (n: string) => `${n} was archived.`,
+    dateLocale: "en-US",
+  },
+} as const
+
 function nextAllowedChange(usernameUpdatedAt: Date): Date {
   return new Date(usernameUpdatedAt.getTime() + COOLDOWN_DAYS * 24 * 60 * 60 * 1000)
 }
@@ -20,6 +97,8 @@ function nextAllowedChange(usernameUpdatedAt: Date): Date {
 export function PerfilClient() {
   const { user, openAuth, setAvatarUrl } = useAuth()
   const { showToast } = useToast()
+  const { lang } = useI18n()
+  const s = T[lang]
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
@@ -60,11 +139,11 @@ export function PerfilClient() {
     const res = await updateProfile(user.id, { username: usernameDraft.trim() })
     setSavingUsername(false)
     if (!res.ok) {
-      showToast(res.message ?? "No se pudo actualizar.", "warn")
+      showToast(res.message ?? s.errUpdate, "warn")
       return
     }
     setProfile((p) => (p ? { ...p, username: usernameDraft.trim(), usernameUpdatedAt: new Date() } : p))
-    showToast("Apodo actualizado.", "success")
+    showToast(s.okNickname, "success")
   }
 
   async function saveBio() {
@@ -73,11 +152,11 @@ export function PerfilClient() {
     const res = await updateProfile(user.id, { bio: bioDraft })
     setSavingBio(false)
     if (!res.ok) {
-      showToast(res.message ?? "No se pudo actualizar.", "warn")
+      showToast(res.message ?? s.errUpdate, "warn")
       return
     }
     setProfile((p) => (p ? { ...p, bio: bioDraft } : p))
-    showToast("Descripción actualizada.", "success")
+    showToast(s.okBio, "success")
   }
 
   async function confirmArchive() {
@@ -86,11 +165,11 @@ export function PerfilClient() {
     const ok = await archiveAgent(archiveTarget.id)
     setArchiving(false)
     if (!ok) {
-      showToast("No se pudo archivar el agente.", "warn")
+      showToast(s.errArchive, "warn")
       return
     }
     setAgents((prev) => prev.map((a) => (a.id === archiveTarget.id ? { ...a, archived: true } : a)))
-    showToast(`${archiveTarget.name} fue archivado.`, "success")
+    showToast(s.okArchive(archiveTarget.name), "success")
     setArchiveTarget(null)
   }
 
@@ -99,9 +178,9 @@ export function PerfilClient() {
       <main>
         <section className="perfil-empty-section">
           <div className="container perfil-empty-box">
-            <p>Inicia sesión para ver y personalizar tu perfil.</p>
+            <p>{s.guest}</p>
             <button className="btn-primary" onClick={() => openAuth("signin")}>
-              <span>Iniciar sesión</span>
+              <span>{s.signIn}</span>
             </button>
           </div>
         </section>
@@ -114,7 +193,7 @@ export function PerfilClient() {
       <main>
         <section className="perfil-empty-section">
           <div className="container perfil-empty-box">
-            <p>Cargando perfil...</p>
+            <p>{s.loading}</p>
           </div>
         </section>
       </main>
@@ -132,7 +211,7 @@ export function PerfilClient() {
             type="button"
             className="perfil-avatar-btn"
             onClick={() => setPickerOpen(true)}
-            aria-label="Cambiar avatar"
+            aria-label={s.changeAvatar}
           >
             {profile.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -140,7 +219,7 @@ export function PerfilClient() {
             ) : (
               <Avatar name={profile.username} size={64} />
             )}
-            <span className="perfil-avatar-overlay">Cambiar</span>
+            <span className="perfil-avatar-overlay">{s.change}</span>
           </button>
           <div>
             <h1 className="perfil-name">{profile.username}</h1>
@@ -152,10 +231,10 @@ export function PerfilClient() {
       <section className="perfil-section">
         <div className="container perfil-grid">
           <div className="perfil-col">
-            <h2 className="section-title-sm">Personalizar perfil</h2>
+            <h2 className="section-title-sm">{s.customize}</h2>
 
             <div className="field-group">
-              <label className="field-label">Apodo</label>
+              <label className="field-label">{s.nickname}</label>
               <div style={{ display: "flex", gap: 8 }}>
                 <input
                   className="field-input"
@@ -169,24 +248,24 @@ export function PerfilClient() {
                   disabled={!canChangeUsername || savingUsername || usernameDraft.trim() === profile.username}
                   onClick={saveUsername}
                 >
-                  <span>{savingUsername ? "..." : "Guardar"}</span>
+                  <span>{savingUsername ? "..." : s.save}</span>
                 </button>
               </div>
               <p className="field-hint">
                 {canChangeUsername
-                  ? "Puedes cambiar tu apodo. Después de guardarlo, esperarás 60 días para volver a cambiarlo."
-                  : `Podrás cambiar tu apodo de nuevo el ${nextChangeDate.toLocaleDateString("es-CO")}.`}
+                  ? s.cooldownOk
+                  : s.cooldownWait(nextChangeDate.toLocaleDateString(s.dateLocale))}
               </p>
             </div>
 
             <div className="field-group">
-              <label className="field-label">Descripción</label>
+              <label className="field-label">{s.bio}</label>
               <textarea
                 className="field-input field-textarea"
                 rows={3}
                 maxLength={160}
                 value={bioDraft}
-                placeholder="Cuéntale a la red quién eres..."
+                placeholder={s.bioPlaceholder}
                 onChange={(e) => setBioDraft(e.target.value)}
               />
               <div className="perfil-bio-actions">
@@ -196,16 +275,16 @@ export function PerfilClient() {
                   disabled={savingBio || bioDraft === profile.bio}
                   onClick={saveBio}
                 >
-                  <span>{savingBio ? "Guardando..." : "Guardar descripción"}</span>
+                  <span>{savingBio ? s.savingBio : s.saveBio}</span>
                 </button>
               </div>
             </div>
 
             <h2 className="section-title-sm" style={{ marginTop: 32 }}>
-              Mis agentes
+              {s.myAgents}
             </h2>
             {agents.length === 0 ? (
-              <p className="perfil-muted">Aún no has registrado ningún agente.</p>
+              <p className="perfil-muted">{s.noAgents}</p>
             ) : (
               <div className="perfil-agent-list">
                 {agents.map((a) => (
@@ -215,11 +294,11 @@ export function PerfilClient() {
                       <Link href={`/agente?id=${a.id}`} className="perfil-agent-name">
                         {a.name}
                       </Link>
-                      {a.archived && <span className="perfil-archived-badge">Archivado</span>}
+                      {a.archived && <span className="perfil-archived-badge">{s.archived}</span>}
                     </div>
                     {!a.archived && (
                       <button className="btn-ghost btn-sm" onClick={() => setArchiveTarget(a)}>
-                        Archivar
+                        {s.archive}
                       </button>
                     )}
                   </div>
@@ -229,9 +308,9 @@ export function PerfilClient() {
           </div>
 
           <div className="perfil-col">
-            <h2 className="section-title-sm">Actividad</h2>
+            <h2 className="section-title-sm">{s.activity}</h2>
             {activity.length === 0 ? (
-              <p className="perfil-muted">Sin actividad todavía.</p>
+              <p className="perfil-muted">{s.noActivity}</p>
             ) : (
               <div className="perfil-activity-list">
                 {activity.map((e, i) => (
@@ -240,7 +319,7 @@ export function PerfilClient() {
                     <div>
                       <p className="perfil-activity-title">{e.title}</p>
                       <p className="perfil-activity-meta">
-                        {formatTime(e.date)}
+                        {formatTime(e.date, lang)}
                         {e.detail ? ` · ${e.detail}` : ""}
                       </p>
                     </div>
@@ -256,8 +335,8 @@ export function PerfilClient() {
         <AvatarPicker
           userId={user.id}
           currentUrl={profile.avatarUrl}
-          title="Cambiar avatar"
-          subtitle="Elige un avatar predeterminado o sube tu propia foto."
+          title={s.changeAvatar}
+          subtitle={s.avatarSubtitle}
           onChosen={(url) => {
             if (url) {
               setProfile((p) => (p ? { ...p, avatarUrl: url } : p))
@@ -271,20 +350,17 @@ export function PerfilClient() {
       {archiveTarget && (
         <div className="modal-overlay open" onClick={(ev) => ev.target === ev.currentTarget && setArchiveTarget(null)}>
           <div className="modal-box">
-            <button className="modal-close" aria-label="Cerrar" onClick={() => setArchiveTarget(null)}>
+            <button className="modal-close" aria-label={s.close} onClick={() => setArchiveTarget(null)}>
               ✕
             </button>
-            <h3 className="modal-title">Archivar {archiveTarget.name}</h3>
-            <p className="modal-sub">
-              El agente desaparecerá del ranking público y se quitará del marketplace si estaba listado. Su
-              historial de competencias se conserva. Esta acción no borra nada de forma permanente.
-            </p>
+            <h3 className="modal-title">{s.archiveTitle(archiveTarget.name)}</h3>
+            <p className="modal-sub">{s.archiveSub}</p>
             <div className="modal-actions">
               <button className="btn-ghost" onClick={() => setArchiveTarget(null)}>
-                Cancelar
+                {s.cancel}
               </button>
               <button className="btn-primary" disabled={archiving} onClick={confirmArchive}>
-                <span>{archiving ? "Archivando..." : "Archivar agente"}</span>
+                <span>{archiving ? s.archiving : s.archiveConfirm}</span>
               </button>
             </div>
           </div>

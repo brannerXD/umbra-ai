@@ -2,7 +2,8 @@ import { readFileSync } from "fs"
 import { join } from "path"
 import { Circle, Document, Image, Page, Polyline, StyleSheet, Svg, Text, View } from "@react-pdf/renderer"
 import type { Agent, CertificateIssuance } from "@/lib/types"
-import { formatFullDate } from "@/lib/umbra"
+import { formatFullDate, getCategoryLabel } from "@/lib/umbra"
+import type { Lang } from "@/lib/i18n"
 
 const BG = "#0A0A0A"
 const SURFACE = "#161616"
@@ -165,10 +166,41 @@ const styles = StyleSheet.create({
   },
 })
 
+
+// Textos del certificado en ambos idiomas. El PDF se genera en el servidor,
+// asi que el idioma llega por query param desde el boton de descarga.
+const T = {
+  es: {
+    eyebrow: "Certificado de reputación",
+    issuedOn: "Emitido el",
+    statScore: "Score total",
+    statWins: "Veces #1",
+    statComps: "Competencias",
+    statAvg: "Promedio /100",
+    chart: "Evolución del score",
+    signature: "Firma digital · Autoridad verificadora de la red",
+    disclaimer: (n: number) =>
+      `Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del historial real de competencias del agente en la red. No es una promesa de resultados futuros. Emitido ${n} ${n === 1 ? "vez" : "veces"} en total.`,
+  },
+  en: {
+    eyebrow: "Reputation certificate",
+    issuedOn: "Issued on",
+    statScore: "Total score",
+    statWins: "Times #1",
+    statComps: "Competitions",
+    statAvg: "Average /100",
+    chart: "Score evolution",
+    signature: "Digital signature · Verifying authority of the network",
+    disclaimer: (n: number) =>
+      `This certificate reflects data verified by Umbra at the time of issuance, calculated from the agent's real competition history on the network. It is not a promise of future results. Issued ${n} ${n === 1 ? "time" : "times"} in total.`,
+  },
+} as const
+
 interface CertificatePdfProps {
   agent: Agent
   issuance: CertificateIssuance
   totalIssued: number
+  lang?: Lang
 }
 
 function buildSparkline(values: number[], width: number, height: number) {
@@ -184,7 +216,8 @@ function buildSparkline(values: number[], width: number, height: number) {
   return { points, dots }
 }
 
-export function CertificatePdf({ agent, issuance, totalIssued }: CertificatePdfProps) {
+export function CertificatePdf({ agent, issuance, totalIssued, lang = "es" }: CertificatePdfProps) {
+  const s = T[lang]
   const chartW = 280
   const chartH = 54
   const showChart = agent.scoreEvolution.length >= 2
@@ -198,35 +231,35 @@ export function CertificatePdf({ agent, issuance, totalIssued }: CertificatePdfP
 
           <View style={styles.content}>
             <Text style={styles.wordmark}>UMBRA</Text>
-            <Text style={styles.eyebrow}>Certificado de reputación</Text>
+            <Text style={styles.eyebrow}>{s.eyebrow}</Text>
             <Text style={styles.title}>{agent.name}</Text>
             <Text style={styles.sub}>
-              {agent.categoryLabel} · Emitido el {formatFullDate(issuance.issuedAt)}
+              {getCategoryLabel(agent.category, lang)} · {s.issuedOn} {formatFullDate(issuance.issuedAt, lang)}
             </Text>
             {agent.description && <Text style={styles.description}>{agent.description}</Text>}
 
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text style={styles.statNum}>{agent.score}</Text>
-                <Text style={styles.statLabel}>Score total</Text>
+                <Text style={styles.statLabel}>{s.statScore}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text style={styles.statNum}>{agent.wins}</Text>
-                <Text style={styles.statLabel}>Veces #1</Text>
+                <Text style={styles.statLabel}>{s.statWins}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text style={styles.statNum}>{agent.comps}</Text>
-                <Text style={styles.statLabel}>Competencias</Text>
+                <Text style={styles.statLabel}>{s.statComps}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text style={styles.statNum}>{agent.avgScore.toFixed(1)}</Text>
-                <Text style={styles.statLabel}>Promedio /100</Text>
+                <Text style={styles.statLabel}>{s.statAvg}</Text>
               </View>
             </View>
 
             {showChart && (
               <View style={styles.chartBlock}>
-                <Text style={styles.chartLabel}>Evolución del score</Text>
+                <Text style={styles.chartLabel}>{s.chart}</Text>
                 <View style={styles.chartBox}>
                   <Svg width={chartW} height={chartH} viewBox={`0 0 ${chartW} ${chartH}`}>
                     <Polyline points={points} stroke={TEXT_2} strokeWidth={1.5} fill="none" />
@@ -238,16 +271,12 @@ export function CertificatePdf({ agent, issuance, totalIssued }: CertificatePdfP
               </View>
             )}
 
-            <Text style={styles.disclaimer}>
-              Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir
-              del historial real de competencias del agente en la red. No es una promesa de resultados futuros.
-              Emitido {totalIssued} {totalIssued === 1 ? "vez" : "veces"} en total.
-            </Text>
+            <Text style={styles.disclaimer}>{s.disclaimer(totalIssued)}</Text>
 
             <View style={styles.signatureBlock}>
               <Text style={styles.signatureMark}>Umbra Agentes</Text>
               <View style={styles.signatureLine} />
-              <Text style={styles.signatureCaption}>Firma digital · Autoridad verificadora de la red</Text>
+              <Text style={styles.signatureCaption}>{s.signature}</Text>
             </View>
           </View>
 
@@ -428,7 +457,8 @@ const mstyles = StyleSheet.create({
   },
 })
 
-export function CertificateMobilePdf({ agent, issuance, totalIssued }: CertificatePdfProps) {
+export function CertificateMobilePdf({ agent, issuance, totalIssued, lang = "es" }: CertificatePdfProps) {
+  const s = T[lang]
   const chartW = 300
   const chartH = 60
   const showChart = agent.scoreEvolution.length >= 2
@@ -442,35 +472,35 @@ export function CertificateMobilePdf({ agent, issuance, totalIssued }: Certifica
           <Image src={LOGO_SRC} style={mstyles.logo} />
           <Text style={mstyles.wordmark}>UMBRA</Text>
           <View style={mstyles.accentLine} />
-          <Text style={mstyles.eyebrow}>Certificado de reputación</Text>
+          <Text style={mstyles.eyebrow}>{s.eyebrow}</Text>
           <Text style={mstyles.title}>{agent.name}</Text>
           <Text style={mstyles.sub}>
-            {agent.categoryLabel} · Emitido el {formatFullDate(issuance.issuedAt)}
+            {getCategoryLabel(agent.category, lang)} · {s.issuedOn} {formatFullDate(issuance.issuedAt, lang)}
           </Text>
           {agent.description && <Text style={mstyles.description}>{agent.description}</Text>}
 
           <View style={mstyles.statsGrid}>
             <View style={mstyles.statBox}>
               <Text style={mstyles.statNum}>{agent.score}</Text>
-              <Text style={mstyles.statLabel}>Score total</Text>
+              <Text style={mstyles.statLabel}>{s.statScore}</Text>
             </View>
             <View style={mstyles.statBox}>
               <Text style={mstyles.statNum}>{agent.wins}</Text>
-              <Text style={mstyles.statLabel}>Veces #1</Text>
+              <Text style={mstyles.statLabel}>{s.statWins}</Text>
             </View>
             <View style={mstyles.statBox}>
               <Text style={mstyles.statNum}>{agent.comps}</Text>
-              <Text style={mstyles.statLabel}>Competencias</Text>
+              <Text style={mstyles.statLabel}>{s.statComps}</Text>
             </View>
             <View style={mstyles.statBox}>
               <Text style={mstyles.statNum}>{agent.avgScore.toFixed(1)}</Text>
-              <Text style={mstyles.statLabel}>Promedio /100</Text>
+              <Text style={mstyles.statLabel}>{s.statAvg}</Text>
             </View>
           </View>
 
           {showChart && (
             <View style={mstyles.chartBlock}>
-              <Text style={mstyles.chartLabel}>Evolución del score</Text>
+              <Text style={mstyles.chartLabel}>{s.chart}</Text>
               <View style={mstyles.chartBox}>
                 <Svg width={chartW} height={chartH} viewBox={`0 0 ${chartW} ${chartH}`}>
                   <Polyline points={points} stroke={TEXT_2} strokeWidth={1.5} fill="none" />
@@ -483,9 +513,7 @@ export function CertificateMobilePdf({ agent, issuance, totalIssued }: Certifica
           )}
 
           <Text style={mstyles.disclaimer}>
-            Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del
-            historial real de competencias del agente en la red. No es una promesa de resultados futuros. Emitido{" "}
-            {totalIssued} {totalIssued === 1 ? "vez" : "veces"} en total.
+            {s.disclaimer(totalIssued)}
           </Text>
 
           {/* Firma — al final del documento */}
@@ -493,7 +521,7 @@ export function CertificateMobilePdf({ agent, issuance, totalIssued }: Certifica
             <View style={mstyles.signatureDivider} />
             <Text style={mstyles.signatureMark}>Umbra Agentes</Text>
             <View style={mstyles.signatureLine} />
-            <Text style={mstyles.signatureCaption}>Firma digital · Autoridad verificadora de la red</Text>
+            <Text style={mstyles.signatureCaption}>{s.signature}</Text>
             <Text style={mstyles.footer}>umbra-agents.com/certificado?id={agent.id}</Text>
           </View>
         </View>

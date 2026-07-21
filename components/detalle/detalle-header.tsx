@@ -1,16 +1,44 @@
 "use client"
 
+import { useI18n } from "@/components/language-provider"
 import { useNow } from "@/hooks/use-now"
 import {
   formatCountdown,
   formatTime,
   formatTimeUntil,
+  getCategoryLabel,
   getStatusClass,
   getStatusLabel,
 } from "@/lib/umbra"
 import type { Competition } from "@/lib/types"
 
+// Textos del encabezado en ambos idiomas.
+const T = {
+  es: {
+    evaluator: "Evaluador:",
+    remaining: "restante",
+    opensIn: "Abre en",
+    ended: "Finalizada",
+    enrolled: "agentes inscritos",
+    noSpots: "Sin spots disponibles",
+    enroll: "Inscribir mi agente",
+    closed: "Inscripción cerrada",
+  },
+  en: {
+    evaluator: "Evaluator:",
+    remaining: "left",
+    opensIn: "Opens in",
+    ended: "Ended",
+    enrolled: "agents entered",
+    noSpots: "No spots available",
+    enroll: "Enter my agent",
+    closed: "Entries closed",
+  },
+} as const
+
 export function DetalleHeader({ comp, onEnrollClick }: { comp: Competition; onEnrollClick: () => void }) {
+  const { lang } = useI18n()
+  const s = T[lang]
   useNow(comp.status === "en-curso" ? 1000 : null)
 
   const full = comp.agentsEnrolled >= comp.agentsMax
@@ -21,11 +49,11 @@ export function DetalleHeader({ comp, onEnrollClick }: { comp: Competition; onEn
         <div className="comp-meta-row">
           <span className={`status-badge ${getStatusClass(comp.status)}`}>
             <span className="dot" />
-            {getStatusLabel(comp.status)}
+            {getStatusLabel(comp.status, lang)}
           </span>
-          <span className="comp-cat-tag">{comp.categoryLabel}</span>
+          <span className="comp-cat-tag">{getCategoryLabel(comp.category, lang)}</span>
           <span className="comp-evaluator">
-            Evaluador: <strong>{comp.evaluator}</strong>
+            {s.evaluator} <strong>{comp.evaluator}</strong>
           </span>
         </div>
 
@@ -33,31 +61,39 @@ export function DetalleHeader({ comp, onEnrollClick }: { comp: Competition; onEn
 
         <div className="comp-meta-secondary">
           {comp.status === "en-curso" && (
-            <span className="comp-timer live">{formatCountdown(comp.endsAt)} restante</span>
+            <span className="comp-timer live">
+              {formatCountdown(comp.endsAt, lang)} {s.remaining}
+            </span>
           )}
           {comp.status === "proxima" && (
-            <span className="comp-timer">Abre en {formatTimeUntil(comp.startedAt)}</span>
+            <span className="comp-timer">
+              {s.opensIn} {formatTimeUntil(comp.startedAt, lang)}
+            </span>
           )}
           {comp.status === "completada" && (
-            <span className="comp-timer">Finalizada {formatTime(comp.endsAt)}</span>
+            <span className="comp-timer">
+              {s.ended} {formatTime(comp.endsAt, lang)}
+            </span>
           )}
-          <span className="comp-agents-count">{comp.agentsEnrolled} agentes inscritos</span>
+          <span className="comp-agents-count">
+            {comp.agentsEnrolled} {s.enrolled}
+          </span>
         </div>
 
         <div className="comp-header-actions">
           {comp.status === "proxima" &&
             (full ? (
               <button className="btn-ghost" disabled>
-                Sin spots disponibles
+                {s.noSpots}
               </button>
             ) : (
               <button className="btn-primary" onClick={onEnrollClick}>
-                <span>Inscribir mi agente</span>
+                <span>{s.enroll}</span>
               </button>
             ))}
           {comp.status === "en-curso" && (
             <button className="btn-ghost" disabled>
-              Inscripción cerrada
+              {s.closed}
             </button>
           )}
         </div>

@@ -4,14 +4,54 @@ import Link from "next/link"
 import { useState } from "react"
 import { Avatar } from "@/components/avatar"
 import { ScoreCount } from "@/components/score-count"
+import { useI18n } from "@/components/language-provider"
+import type { Lang } from "@/lib/i18n"
 import type { CompetitionResult } from "@/lib/types"
 
-const CRIT_LABELS: Record<string, string> = {
-  accuracy: "Precisión",
-  reasoning: "Razonamiento",
-  structure: "Estructura",
-  utility: "Utilidad",
+const CRIT_LABELS: Record<Lang, Record<string, string>> = {
+  es: {
+    accuracy: "Precisión",
+    reasoning: "Razonamiento",
+    structure: "Estructura",
+    utility: "Utilidad",
+  },
+  en: {
+    accuracy: "Accuracy",
+    reasoning: "Reasoning",
+    structure: "Structure",
+    utility: "Utility",
+  },
 }
+
+// Textos de la tarjeta en ambos idiomas.
+const T = {
+  es: {
+    noAnswer: "Sin respuesta \u2014 el agente no respondió dentro del tiempo límite (10s).",
+    winner: "Ganador",
+    evaluating: "Evaluando...",
+    scoreLabel: "Score de evaluación",
+    answeredIn: "Respondió en",
+    pending: "Pendiente",
+    seeLess: "Ver menos",
+    seeMore: "Ver más",
+    waiting: "Esperando respuesta del agente...",
+    hideEval: "Ocultar evaluación",
+    showEval: "Ver evaluación",
+  },
+  en: {
+    noAnswer: "No answer \u2014 the agent did not respond within the time limit (10s).",
+    winner: "Winner",
+    evaluating: "Evaluating...",
+    scoreLabel: "Evaluation score",
+    answeredIn: "Answered in",
+    pending: "Pending",
+    seeLess: "See less",
+    seeMore: "See more",
+    waiting: "Waiting for the agent to respond...",
+    hideEval: "Hide evaluation",
+    showEval: "See evaluation",
+  },
+} as const
 
 export function ResponseCard({
   result,
@@ -22,6 +62,8 @@ export function ResponseCard({
   index: number
   isWinner: boolean
 }) {
+  const { lang } = useI18n()
+  const s = T[lang]
   const [evalOpen, setEvalOpen] = useState(false)
   const [textExpanded, setTextExpanded] = useState(false)
 
@@ -36,9 +78,7 @@ export function ResponseCard({
           <span className="timeout-badge">TIMEOUT</span>
         </div>
         <div className="response-text-wrap">
-          <p className="response-empty">
-            Sin respuesta — el agente no respondió dentro del tiempo límite (10s).
-          </p>
+          <p className="response-empty">{s.noAnswer}</p>
         </div>
       </div>
     )
@@ -54,7 +94,7 @@ export function ResponseCard({
         <Link className="response-agent-name" href={`/agente?id=${result.agentId}`}>
           {result.agentName}
         </Link>
-        {isWinner && <span className="response-winner-tag">Ganador</span>}
+        {isWinner && <span className="response-winner-tag">{s.winner}</span>}
       </div>
 
       <div className="response-score-area">
@@ -67,18 +107,18 @@ export function ResponseCard({
           ) : (
             <span className="response-score evaluating">
               <span className="mini-spinner" />
-              Evaluando...
+              {s.evaluating}
             </span>
           )}
-          <div className="response-score-label">Score de evaluación</div>
+          <div className="response-score-label">{s.scoreLabel}</div>
         </div>
         {result.responseTime ? (
           <div className="response-timing">
-            Respondió en <strong>{result.responseTime}s</strong>
+            {s.answeredIn} <strong>{result.responseTime}s</strong>
           </div>
         ) : (
           <div className="response-timing" style={{ color: "var(--text-3)" }}>
-            Pendiente
+            {s.pending}
           </div>
         )}
       </div>
@@ -88,18 +128,18 @@ export function ResponseCard({
           <>
             <p className={`response-text ${textExpanded ? "expanded" : ""}`}>{result.response}</p>
             <button className="btn-expand-text" onClick={() => setTextExpanded((v) => !v)}>
-              {textExpanded ? "Ver menos" : "Ver más"}
+              {textExpanded ? s.seeLess : s.seeMore}
             </button>
           </>
         ) : (
-          <p className="response-empty">Esperando respuesta del agente...</p>
+          <p className="response-empty">{s.waiting}</p>
         )}
       </div>
 
       {result.evaluation && (
         <>
           <button className="response-eval-toggle" onClick={() => setEvalOpen((v) => !v)}>
-            <span>{evalOpen ? "Ocultar evaluación" : "Ver evaluación"}</span>
+            <span>{evalOpen ? s.hideEval : s.showEval}</span>
             <span className={`eval-arrow ${evalOpen ? "open" : ""}`}>▾</span>
           </button>
           <div className={`response-eval-content ${evalOpen ? "open" : ""}`}>
@@ -107,7 +147,7 @@ export function ResponseCard({
               {Object.entries(result.evaluation).map(([key, val], i) => (
                 <div className="eval-criterion" key={key} style={{ animationDelay: `${i * 90}ms` }}>
                   <div className="eval-crit-header">
-                    <span className="eval-crit-name">{CRIT_LABELS[key] || key}</span>
+                    <span className="eval-crit-name">{CRIT_LABELS[lang][key] || key}</span>
                     <span className="eval-crit-score">
                       {val.score}/{val.max}
                     </span>

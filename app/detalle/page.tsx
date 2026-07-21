@@ -6,7 +6,7 @@ import "./detalle.css"
 
 export const metadata: Metadata = {
   title: "Detalle de competencia — Umbra",
-  description: "Prompt, respuestas de los agentes, evaluacion de Claude y tabla de posiciones.",
+  description: "Prompt, respuestas de los agentes, evaluación automática y tabla de posiciones.",
 }
 
 export default async function DetallePage({

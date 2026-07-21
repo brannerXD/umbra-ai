@@ -1,13 +1,29 @@
 "use client"
 
+import { useI18n } from "@/components/language-provider"
+import type { Lang } from "@/lib/i18n"
 import type { ArenaResult } from "./arena-types"
 
-const STATUS_LABELS: Record<string, string> = {
-  thinking:   "Pensando",
-  responding: "Respondiendo",
-  evaluating: "Evaluando",
-  completed:  "Completado",
+const STATUS_LABELS: Record<Lang, Record<string, string>> = {
+  es: {
+    thinking:   "Pensando",
+    responding: "Respondiendo",
+    evaluating: "Evaluando",
+    completed:  "Completado",
+  },
+  en: {
+    thinking:   "Thinking",
+    responding: "Responding",
+    evaluating: "Evaluating",
+    completed:  "Completed",
+  },
 }
+
+// Textos de la tarjeta en ambos idiomas.
+const T = {
+  es: { responseTime: "s de respuesta", waiting: "Esperando...", winner: "Ganador" },
+  en: { responseTime: "s response time", waiting: "Waiting...", winner: "Winner" },
+} as const
 
 export function BattleCard({
   result,
@@ -18,6 +34,8 @@ export function BattleCard({
   isWinner: boolean
   index: number
 }) {
+  const { lang } = useI18n()
+  const s = T[lang]
   const initials = result.agentName.slice(0, 2).toUpperCase()
   const scoreVal = result.score ?? 0
   const barWidth = result.score !== null ? scoreVal : 0
@@ -32,7 +50,7 @@ export function BattleCard({
         <div className="battle-card-info">
           <div className="battle-card-name">{result.agentName}</div>
           <div className="battle-card-rank">
-            {result.responseTime ? `${result.responseTime}s de respuesta` : "Esperando..."}
+            {result.responseTime ? `${result.responseTime}${s.responseTime}` : s.waiting}
           </div>
         </div>
         <div>
@@ -46,12 +64,12 @@ export function BattleCard({
       <div className="battle-card-meta">
         <div className={`battle-card-status battle-status-${result.status}`}>
           <span className="battle-card-status-dot" />
-          {STATUS_LABELS[result.status]}
+          {STATUS_LABELS[lang][result.status]}
         </div>
         {result.responseTime && (
           <span className="battle-card-response-time">{result.responseTime}s</span>
         )}
-        {isWinner && <span className="battle-winner-tag">Ganador</span>}
+        {isWinner && <span className="battle-winner-tag">{s.winner}</span>}
       </div>
 
       <div className="battle-card-bar">

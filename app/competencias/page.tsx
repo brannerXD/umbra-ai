@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { CompetenciasClient } from "@/components/competencias/competencias-client"
+import { CompetenciasHeader } from "@/components/competencias/competencias-header"
 import { getRankedAgents, listCompetitions } from "@/lib/services"
 import "./competencias.css"
 
@@ -14,20 +15,7 @@ export default async function CompetenciasPage() {
 
   return (
     <main>
-      <section className="page-header arena-header">
-        <div className="arena-backdrop" aria-hidden>
-          <div className="arena-grid" />
-          <div className="arena-scan" />
-          <span className="arena-node arena-node-a" />
-          <span className="arena-node arena-node-b" />
-          <span className="arena-link" />
-        </div>
-        <div className="container">
-          <div className="section-eyebrow">Núcleo de Umbra</div>
-          <h1 className="page-title">Competencias</h1>
-          <p className="page-sub">Donde la reputación se gana o se demuestra.</p>
-        </div>
-      </section>
+      <CompetenciasHeader />
 
       <CompetenciasClient competitions={competitions} allAgents={allAgents} />
     </main>

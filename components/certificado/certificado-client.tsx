@@ -3,10 +3,65 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { CountUp } from "@/components/count-up"
+import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
 import { MIN_COMPS_FOR_CERTIFICATE } from "@/lib/services"
 import type { Agent, CertificateIssuance } from "@/lib/types"
-import { formatFullDate } from "@/lib/umbra"
+import { formatFullDate, getCategoryLabel } from "@/lib/umbra"
+
+// Textos de la pagina en ambos idiomas.
+const T = {
+  es: {
+    back: "\u2190 Volver al agente",
+    kicker: "Certificado de reputación",
+    notEnoughTitle: "Todavía no hay suficientes datos.",
+    notEnoughSub: (name: string, comps: number, min: number) =>
+      `${name} lleva ${comps} de ${min} competencias necesarias para emitir un certificado verificable.`,
+    issuedOn: "Emitido el",
+    statScore: "Score total",
+    statWins: "Veces #1",
+    statComps: "Competencias",
+    statAvg: "Promedio /100",
+    download: "Descargar PDF",
+    issuedCount: (n: number) => `Certificado emitido ${n} ${n === 1 ? "vez" : "veces"}`,
+    disclaimer:
+      "Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del historial real de competencias del agente. No es una promesa de resultados futuros.",
+    pickFormat: "Elegir formato de descarga",
+    close: "Cerrar",
+    modalTitle: "Descargar certificado",
+    modalSub: "Elige el formato según dónde lo vas a ver.",
+    desktop: "Escritorio",
+    desktopHint: "Horizontal · ideal para PC e imprimir",
+    mobile: "Móvil",
+    mobileHint: "Vertical · se ve bien en el celular",
+    cancel: "Cancelar",
+  },
+  en: {
+    back: "\u2190 Back to agent",
+    kicker: "Reputation certificate",
+    notEnoughTitle: "There is not enough data yet.",
+    notEnoughSub: (name: string, comps: number, min: number) =>
+      `${name} has ${comps} of the ${min} competitions needed to issue a verifiable certificate.`,
+    issuedOn: "Issued on",
+    statScore: "Total score",
+    statWins: "Times #1",
+    statComps: "Competitions",
+    statAvg: "Average /100",
+    download: "Download PDF",
+    issuedCount: (n: number) => `Certificate issued ${n} ${n === 1 ? "time" : "times"}`,
+    disclaimer:
+      "This certificate reflects data verified by Umbra at the time of issuance, calculated from the agent's real competition history. It is not a promise of future results.",
+    pickFormat: "Choose download format",
+    close: "Close",
+    modalTitle: "Download certificate",
+    modalSub: "Pick the format based on where you will view it.",
+    desktop: "Desktop",
+    desktopHint: "Landscape · ideal for PC and printing",
+    mobile: "Mobile",
+    mobileHint: "Portrait · looks good on a phone",
+    cancel: "Cancel",
+  },
+} as const
 
 interface CertificadoClientProps {
   agent: Agent
@@ -15,29 +70,8 @@ interface CertificadoClientProps {
 }
 
 export function CertificadoClient({ agent, eligible, issuances }: CertificadoClientProps) {
-  if (!eligible) {
-    return (
-      <main>
-        <div className="breadcrumb-bar">
-          <div className="container">
-            <Link href={`/agente?id=${agent.id}`} className="breadcrumb-link">
-              ← Volver al agente
-            </Link>
-          </div>
-        </div>
-        <section className="cert-empty container">
-          <p className="section-eyebrow">Certificado de reputación</p>
-          <h1 className="page-title">Todavía no hay suficientes datos.</h1>
-          <p className="page-sub">
-            {agent.name} lleva {agent.comps} de {MIN_COMPS_FOR_CERTIFICATE} competencias necesarias para emitir un
-            certificado verificable.
-          </p>
-        </section>
-      </main>
-    )
-  }
-
-  const latest = issuances[0]
+  const { lang } = useI18n()
+  const s = T[lang]
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -53,25 +87,49 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
     }
   }, [menuOpen])
 
+  if (!eligible) {
+    return (
+      <main>
+        <div className="breadcrumb-bar">
+          <div className="container">
+            <Link href={`/agente?id=${agent.id}`} className="breadcrumb-link">
+              {s.back}
+            </Link>
+          </div>
+        </div>
+        <section className="cert-empty container">
+          <p className="section-eyebrow">{s.kicker}</p>
+          <h1 className="page-title">{s.notEnoughTitle}</h1>
+          <p className="page-sub">
+            {s.notEnoughSub(agent.name, agent.comps, MIN_COMPS_FOR_CERTIFICATE)}
+          </p>
+        </section>
+      </main>
+    )
+  }
+
+  const latest = issuances[0]
+
   return (
     <main>
       <div className="breadcrumb-bar">
         <div className="container">
           <Link href={`/agente?id=${agent.id}`} className="breadcrumb-link">
-            ← Volver al agente
+            {s.back}
           </Link>
         </div>
       </div>
 
       <section className="cert-header container">
         <Reveal as="div" className="section-eyebrow">
-          Certificado de reputación
+          {s.kicker}
         </Reveal>
         <Reveal as="h1" className="cert-title">
           {agent.name}
         </Reveal>
         <Reveal as="p" className="cert-sub">
-          {agent.categoryLabel} · Emitido el {formatFullDate(latest?.issuedAt ?? new Date())}
+          {getCategoryLabel(agent.category, lang)} · {s.issuedOn}{" "}
+          {formatFullDate(latest?.issuedAt ?? new Date(), lang)}
         </Reveal>
         {agent.description && (
           <Reveal as="p" className="cert-description">
@@ -86,23 +144,23 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
             <span className="stat-card-num">
               <CountUp target={agent.score} />
             </span>
-            <span className="stat-card-label">Score total</span>
+            <span className="stat-card-label">{s.statScore}</span>
           </div>
           <div className="stat-card">
             <span className="stat-card-num">
               <CountUp target={agent.wins} />
             </span>
-            <span className="stat-card-label">Veces #1</span>
+            <span className="stat-card-label">{s.statWins}</span>
           </div>
           <div className="stat-card">
             <span className="stat-card-num">
               <CountUp target={agent.comps} />
             </span>
-            <span className="stat-card-label">Competencias</span>
+            <span className="stat-card-label">{s.statComps}</span>
           </div>
           <div className="stat-card">
             <span className="stat-card-num">{agent.avgScore.toFixed(1)}</span>
-            <span className="stat-card-label">Promedio /100</span>
+            <span className="stat-card-label">{s.statAvg}</span>
           </div>
         </Reveal>
 
@@ -114,16 +172,15 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
           >
-            <span>Descargar PDF</span>
+            <span>{s.download}</span>
           </button>
           <span className="cert-issued-count">
-            Certificado emitido {issuances.length} {issuances.length === 1 ? "vez" : "veces"}
+            {s.issuedCount(issuances.length)}
           </span>
         </Reveal>
 
         <Reveal as="p" className="cert-disclaimer">
-          Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del
-          historial real de competencias del agente. No es una promesa de resultados futuros.
+          {s.disclaimer}
         </Reveal>
       </section>
 
@@ -132,24 +189,24 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
           className="modal-overlay open"
           role="dialog"
           aria-modal="true"
-          aria-label="Elegir formato de descarga"
+          aria-label={s.pickFormat}
           onClick={() => setMenuOpen(false)}
         >
           <div className="modal-box cert-format-modal" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               className="modal-close"
-              aria-label="Cerrar"
+              aria-label={s.close}
               onClick={() => setMenuOpen(false)}
             >
               ✕
             </button>
-            <h2 className="modal-title">Descargar certificado</h2>
-            <p className="modal-sub">Elige el formato según dónde lo vas a ver.</p>
+            <h2 className="modal-title">{s.modalTitle}</h2>
+            <p className="modal-sub">{s.modalSub}</p>
 
             <div className="cert-format-options">
               <a
-                href={`/certificado/pdf?id=${agent.id}&format=desktop`}
+                href={`/certificado/pdf?id=${agent.id}&format=desktop&lang=${lang}`}
                 className="cert-format-option"
                 download
                 onClick={() => setMenuOpen(false)}
@@ -162,12 +219,12 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
                   </svg>
                 </span>
                 <span className="cert-format-text">
-                  <strong>Escritorio</strong>
-                  <em>Horizontal · ideal para PC e imprimir</em>
+                  <strong>{s.desktop}</strong>
+                  <em>{s.desktopHint}</em>
                 </span>
               </a>
               <a
-                href={`/certificado/pdf?id=${agent.id}&format=mobile`}
+                href={`/certificado/pdf?id=${agent.id}&format=mobile&lang=${lang}`}
                 className="cert-format-option"
                 download
                 onClick={() => setMenuOpen(false)}
@@ -180,15 +237,15 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
                   </svg>
                 </span>
                 <span className="cert-format-text">
-                  <strong>Móvil</strong>
-                  <em>Vertical · se ve bien en el celular</em>
+                  <strong>{s.mobile}</strong>
+                  <em>{s.mobileHint}</em>
                 </span>
               </a>
             </div>
 
             <div className="modal-actions">
               <button type="button" className="btn-ghost" onClick={() => setMenuOpen(false)}>
-                Cancelar
+                {s.cancel}
               </button>
             </div>
           </div>

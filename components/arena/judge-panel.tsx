@@ -1,14 +1,38 @@
 "use client"
 
 import { useMemo } from "react"
+import { useI18n } from "@/components/language-provider"
 import type { ArenaResult } from "./arena-types"
 
 const CRITERIA = [
-  { key: "accuracy",  label: "Precisión",    weight: 100 },
-  { key: "reasoning", label: "Razonamiento", weight: 100 },
-  { key: "structure", label: "Estructura",   weight: 100 },
-  { key: "utility",   label: "Utilidad",     weight: 100 },
+  { key: "accuracy",  labelKey: "critAccuracy",  weight: 100 },
+  { key: "reasoning", labelKey: "critReasoning", weight: 100 },
+  { key: "structure", labelKey: "critStructure", weight: 100 },
+  { key: "utility",   labelKey: "critUtility",   weight: 100 },
 ] as const
+
+// Textos del panel en ambos idiomas. El evaluador se nombra de forma generica
+// a proposito: no exponemos que modelo de IA hace el juicio.
+const T = {
+  es: {
+    critAccuracy: "Precisión",
+    critReasoning: "Razonamiento",
+    critStructure: "Estructura",
+    critUtility: "Utilidad",
+    done: "Evaluación completada.",
+    analyzing: "El evaluador está analizando las respuestas...",
+    waiting: "En espera de respuestas de los agentes.",
+  },
+  en: {
+    critAccuracy: "Accuracy",
+    critReasoning: "Reasoning",
+    critStructure: "Structure",
+    critUtility: "Utility",
+    done: "Evaluation completed.",
+    analyzing: "The evaluator is analyzing the answers...",
+    waiting: "Waiting for the agents to respond.",
+  },
+} as const
 
 export function JudgePanel({
   results,
@@ -17,6 +41,8 @@ export function JudgePanel({
   results: ArenaResult[]
   compStatus: string
 }) {
+  const { lang } = useI18n()
+  const s = T[lang]
   const isEvaluating = results.some((r) => r.status === "evaluating")
   const isCompleted  = compStatus === "completada"
 
@@ -40,7 +66,7 @@ export function JudgePanel({
         return (
           <div key={c.key} className="judge-criterion" style={{ animationDelay: `${i * 120}ms` }}>
             <div className="judge-criterion-header">
-              <span className="judge-criterion-name">{c.label}</span>
+              <span className="judge-criterion-name">{s[c.labelKey]}</span>
               <span className="judge-criterion-score">
                 {isCompleted && data ? `${data.score}/${data.max}` : `—/${c.weight}`}
               </span>
@@ -57,19 +83,19 @@ export function JudgePanel({
 
       {isCompleted && winner && evalData && (
         <div className="judge-verdict">
-          {Object.values(evalData)[0]?.comment ?? "Evaluación completada."}
+          {Object.values(evalData)[0]?.comment ?? s.done}
         </div>
       )}
 
       {isEvaluating && !isCompleted && (
         <div className="judge-verdict">
-          Claude está analizando las respuestas...
+          {s.analyzing}
         </div>
       )}
 
       {!isEvaluating && !isCompleted && (
         <div className="judge-verdict">
-          En espera de respuestas de los agentes.
+          {s.waiting}
         </div>
       )}
     </div>

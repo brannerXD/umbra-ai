@@ -1,15 +1,39 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useI18n } from "@/components/language-provider"
 import { useNow } from "@/hooks/use-now"
 import {
   formatCountdown,
   formatTime,
   formatTimeUntil,
+  getCategoryLabel,
   getStatusClass,
   getStatusLabel,
 } from "@/lib/umbra"
 import type { Competition } from "@/lib/types"
+
+// Textos de la tarjeta en ambos idiomas.
+const T = {
+  es: {
+    myAgent: "Tu agente compite",
+    opensIn: "Abre en",
+    enroll: "Inscribir agente →",
+    watchLive: "Ver en vivo →",
+    seeDetail: "Ver detalle →",
+    evaluator: "Evaluador:",
+    agents: "agentes",
+  },
+  en: {
+    myAgent: "Your agent is competing",
+    opensIn: "Opens in",
+    enroll: "Enter agent →",
+    watchLive: "Watch live →",
+    seeDetail: "See details →",
+    evaluator: "Evaluator:",
+    agents: "agents",
+  },
+} as const
 
 interface CompListCardProps {
   comp: Competition
@@ -20,11 +44,13 @@ interface CompListCardProps {
 
 export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCardProps) {
   const router = useRouter()
+  const { lang } = useI18n()
+  const s = T[lang]
   useNow(comp.status === "en-curso" ? 1000 : null)
 
   const fill = comp.agentsMax > 0 ? Math.round((comp.agentsEnrolled / comp.agentsMax) * 100) : 0
   const statusCls = getStatusClass(comp.status)
-  const statusLbl = getStatusLabel(comp.status)
+  const statusLbl = getStatusLabel(comp.status, lang)
 
   const enrolled = comp.results?.some((r) => myAgentIds.includes(r.agentId))
 
@@ -45,18 +71,22 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
           <span className="dot" />
           {statusLbl}
         </span>
-        <span className="cat-tag">{comp.categoryLabel}</span>
-        {enrolled && <span className="my-agent-badge">Tu agente compite</span>}
+        <span className="cat-tag">{getCategoryLabel(comp.category, lang)}</span>
+        {enrolled && <span className="my-agent-badge">{s.myAgent}</span>}
       </div>
 
       <div className="card-right">
         {comp.status === "en-curso" && (
-          <span className="card-timer live-timer">{formatCountdown(comp.endsAt)}</span>
+          <span className="card-timer live-timer">{formatCountdown(comp.endsAt, lang)}</span>
         )}
         {comp.status === "proxima" && (
-          <span className="card-timer upcoming-timer">Abre en {formatTimeUntil(comp.startedAt)}</span>
+          <span className="card-timer upcoming-timer">
+            {s.opensIn} {formatTimeUntil(comp.startedAt, lang)}
+          </span>
         )}
-        {comp.status === "completada" && <span className="card-timer">{formatTime(comp.endsAt)}</span>}
+        {comp.status === "completada" && (
+          <span className="card-timer">{formatTime(comp.endsAt, lang)}</span>
+        )}
         <div className="card-cta">
           {comp.status === "proxima" ? (
             <button
@@ -66,7 +96,7 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
                 onEnroll(comp)
               }}
             >
-              <span>Inscribir agente →</span>
+              <span>{s.enroll}</span>
             </button>
           ) : comp.status === "en-curso" ? (
             <button
@@ -76,7 +106,7 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
                 goDetail()
               }}
             >
-              Ver en vivo →
+              {s.watchLive}
             </button>
           ) : (
             <button
@@ -86,7 +116,7 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
                 goDetail()
               }}
             >
-              Ver detalle →
+              {s.seeDetail}
             </button>
           )}
         </div>
@@ -96,14 +126,14 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
 
       <div className="card-bottom">
         <span className="card-evaluator">
-          Evaluador: <strong>{comp.evaluator}</strong>
+          {s.evaluator} <strong>{comp.evaluator}</strong>
         </span>
         <div className="card-agents-bar">
           <div className="card-bar">
             <div className="card-bar-fill" style={{ width: `${fill}%` }} />
           </div>
           <span className="card-agents-text">
-            {comp.agentsEnrolled}/{comp.agentsMax} agentes
+            {comp.agentsEnrolled}/{comp.agentsMax} {s.agents}
           </span>
         </div>
         {comp.status === "completada" && comp.winnerName && (
