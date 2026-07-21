@@ -57,6 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [avatarChosen, setAvatarChosen] = useState<boolean | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  // El perfil (donde vive is_admin) se consulta en un segundo efecto, despues
+  // de la sesion. Guardar "ya cargue el perfil" como booleano no basta: al
+  // montar, userId es null, el efecto entra por la rama sin-sesion y lo marca
+  // como resuelto; cuando despues llega la sesion queda un instante con
+  // loading=false, perfil "resuelto" e isAdmin aun en false, y la guardia de
+  // /admin expulsa al propio admin. Por eso se guarda DE QUE usuario es el
+  // perfil cargado: si no coincide con el actual, todavia no esta resuelto.
+  // undefined = nunca se ha cargado; null = cargado para "sin sesion".
+  const [profileFor, setProfileFor] = useState<string | null | undefined>(undefined)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>("signin")
 
@@ -82,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfileAvatar(null)
       setAvatarChosen(null)
       setIsAdmin(false)
+      // Sin sesion no hay perfil que esperar.
+      setProfileFor(null)
       return
     }
     let active = true
@@ -95,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfileAvatar((data?.avatar_url as string | null) ?? null)
         setAvatarChosen((data?.avatar_chosen as boolean | null) ?? null)
         setIsAdmin((data?.is_admin as boolean | null) ?? false)
+        setProfileFor(userId)
       })
     return () => {
       active = false
@@ -183,7 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        // Sigue "cargando" mientras el perfil cargado no sea el del usuario
+        // actual: comparar contra userId invalida el dato al instante, sin
+        // depender de que corra ningun efecto.
+        loading: loading || profileFor !== userId,
         isAdmin: isAdmin && !!user,
         openAuth,
         signInWithGoogle,
