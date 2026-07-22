@@ -651,28 +651,41 @@ export async function getAgentVersions(listingId: string): Promise<AgentVersion[
 // Registra la compra. Aún sin cobro real: deja constancia del derecho de
 // acceso/descarga, que es lo que habilita la RLS del bucket privado. Para el
 // código, guarda qué versión se compró.
-export async function purchaseListing(input: {
+/**
+ * Inicia una compra REAL. Ya no se inserta la compra desde el navegador (eso
+ * permitiria regalarse un agente sin pagar): se le pide al servidor que cree la
+ * compra en pendiente y devuelva la URL de la pasarela. La compra solo pasa a
+ * completada cuando el webhook confirma el pago.
+ *
+ * Devuelve la URL a la que hay que enviar al comprador.
+ */
+export async function iniciarCompra(input: {
   listingId: string
-  buyerId: string
-  price: number
-  priceUnit: string
   versionId?: string | null
-}): Promise<boolean> {
-  const { error } = await supabase.from("purchases").insert({
-    listing_id: input.listingId,
-    buyer_id: input.buyerId,
-    price: input.price,
-    price_unit: input.priceUnit,
-    version_id: input.versionId ?? null,
-    status: "completada",
-  })
-  // Ya la había comprado antes: no es un error para el usuario.
-  if (error && error.code === "23505") return true
-  if (error) {
-    console.error("purchaseListing failed", error)
-    return false
+}): Promise<{ ok: true; url: string } | { ok: false; message: string; codigo?: string }> {
+  const { data: sesion } = await supabase.auth.getSession()
+  const token = sesion.session?.access_token
+  if (!token) return { ok: false, message: "Debes iniciar sesion para comprar." }
+
+  try {
+    const res = await fetch("/api/pagos/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ listingId: input.listingId, versionId: input.versionId ?? null }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok || !data?.url) {
+      return {
+        ok: false,
+        message: data?.error ?? "No se pudo iniciar la compra.",
+        codigo: data?.codigo,
+      }
+    }
+    return { ok: true, url: data.url as string }
+  } catch (e) {
+    console.error("iniciarCompra fallo", e)
+    return { ok: false, message: "No se pudo contactar el servidor de pagos." }
   }
-  return true
 }
 
 // IDs de listados que este usuario ya compró (para mostrar la descarga).

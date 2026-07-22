@@ -26,7 +26,15 @@ function translateError(msg: string): string {
   if (m.includes("invalid login credentials")) return "Correo o contraseña incorrectos."
   if (m.includes("already registered") || m.includes("already been registered")) return "Ya existe una cuenta con ese correo."
   if (m.includes("email not confirmed")) return "Debes confirmar tu correo antes de entrar. Revisa tu bandeja."
-  if (m.includes("rate limit")) return "Demasiados intentos. Espera un momento e inténtalo de nuevo."
+  // El limite de ENVIO DE CORREO es distinto del de intentos: se agota a nivel
+  // de proyecto (no por usuario) y deja al visitante sin salida. Se le ofrece
+  // Google, que no manda correo y por tanto no lo toca.
+  if (m.includes("email rate limit") || m.includes("over_email_send_rate_limit")) {
+    return "Ahora mismo no podemos enviar el correo de confirmación. Entra con Google (es inmediato) o inténtalo en un rato."
+  }
+  if (m.includes("rate limit") || m.includes("too many requests")) {
+    return "Demasiados intentos. Espera un momento e inténtalo de nuevo, o entra con Google."
+  }
   if (m.includes("password")) return "La contraseña no cumple los requisitos (mínimo 6 caracteres)."
   if (m.includes("unable to validate email")) return "El formato del correo no es válido."
   return msg
