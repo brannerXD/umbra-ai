@@ -6,11 +6,19 @@
 
 import { supabase } from "./supabase"
 import { formatListingPrice, getCategoryLabel } from "./umbra"
+import type { Lang } from "./i18n"
 import type {
   ActivityEvent,
   Agent,
   AgentHistoryEntry,
   AgentLicense,
+  FeedbackEntry,
+  GrowthData,
+  GrowthDay,
+  MyActivity,
+  ReputationJourney,
+  UserActivity,
+  UserEvent,
   AgentVersion,
   BillingModel,
   Category,
@@ -361,6 +369,14 @@ export interface AdminStats {
   competitionsByStatus: Record<string, number>
   listingsByType: Record<string, number>
   agentsByCategory: { label: string; value: number }[]
+  /** Competencias cruzadas por categoria y estado. */
+  competitionsByCategory: {
+    label: string
+    en_curso: number
+    proxima: number
+    completada: number
+    total: number
+  }[]
   topAgents: { label: string; value: number }[]
 }
 
@@ -383,6 +399,8 @@ export async function getAdminStats(): Promise<AdminStats | null> {
     competitionsByStatus: (d.competitions_by_status as Record<string, number>) ?? {},
     listingsByType: (d.listings_by_type as Record<string, number>) ?? {},
     agentsByCategory: (d.agents_by_category as { label: string; value: number }[]) ?? [],
+    competitionsByCategory:
+      (d.competitions_by_category as AdminStats["competitionsByCategory"]) ?? [],
     topAgents: (d.top_agents as { label: string; value: number }[]) ?? [],
   }
 }
@@ -817,7 +835,29 @@ export async function updateProfile(
 
 // ── ACTIVIDAD ─────────────────────────────
 
-export async function getActivityForUser(ownerId: string): Promise<ActivityEvent[]> {
+// Textos de la actividad del perfil. Van aqui porque se arman junto al dato.
+const ACT_T = {
+  es: {
+    registraste: (n: string) => `Registraste el agente ${n}`,
+    compitio: (n: string, gano: boolean, comp: string) =>
+      `${n} ${gano ? "ganó" : "compitió en"} "${comp}"`,
+    score: (s: number) => `Score: ${s}/100`,
+    listado: (n: string) => `${n} está disponible en el marketplace`,
+  },
+  en: {
+    registraste: (n: string) => `You registered the agent ${n}`,
+    compitio: (n: string, gano: boolean, comp: string) =>
+      `${n} ${gano ? "won" : "competed in"} "${comp}"`,
+    score: (s: number) => `Score: ${s}/100`,
+    listado: (n: string) => `${n} is available on the marketplace`,
+  },
+} as const
+
+export async function getActivityForUser(
+  ownerId: string,
+  lang: Lang = "es",
+): Promise<ActivityEvent[]> {
+  const t = ACT_T[lang]
   const { data: agentRows } = await supabase
     .from("agents")
     .select("id, name, created_at")
@@ -832,7 +872,7 @@ export async function getActivityForUser(ownerId: string): Promise<ActivityEvent
   const events: ActivityEvent[] = agents.map((a) => ({
     type: "registered",
     date: new Date(a.created_at),
-    title: `Registraste el agente ${a.name}`,
+    title: t.registraste(a.name),
     detail: "",
     agentId: a.id,
   }))
@@ -854,8 +894,8 @@ export async function getActivityForUser(ownerId: string): Promise<ActivityEvent
     events.push({
       type: "competed",
       date: new Date(e.created_at),
-      title: `${nameById.get(e.agent_id)} ${won ? "ganó" : "compitió en"} "${e.competitions?.title ?? "—"}"`,
-      detail: `Score: ${e.final_score}/100`,
+      title: t.compitio(nameById.get(e.agent_id) ?? "", won, e.competitions?.title ?? "—"),
+      detail: t.score(e.final_score),
       agentId: e.agent_id,
       competitionId: e.competitions?.id,
     })
@@ -870,8 +910,8 @@ export async function getActivityForUser(ownerId: string): Promise<ActivityEvent
     events.push({
       type: "listed",
       date: new Date(l.listed_at),
-      title: `${nameById.get(l.agent_id)} está disponible en el marketplace`,
-      detail: formatListingPrice(l.price, l.price_unit, l.billing_model),
+      title: t.listado(nameById.get(l.agent_id) ?? ""),
+      detail: formatListingPrice(l.price, l.price_unit, l.billing_model, lang),
       agentId: l.agent_id,
     })
   })
@@ -964,4 +1004,128 @@ export async function issueLicense(purchaseId: string): Promise<
     return { ok: false, message: error?.message ?? "No se pudo emitir la licencia." }
   }
   return { ok: true, key: data }
+}
+
+// ── OPINIONES ───────────────────────────
+
+/** Envia una opinion sobre Umbra. Queda privada hasta que el admin la publique. */
+export async function submitFeedback(input: {
+  userId: string
+  message: string
+  rating: number | null
+  authorConsent: boolean
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await supabase.from("feedback").insert({
+    user_id: input.userId,
+    message: input.message.trim(),
+    rating: input.rating,
+    author_consent: input.authorConsent,
+  })
+  if (error) {
+    console.error("submitFeedback failed", error)
+    return { ok: false, message: error.message }
+  }
+  return { ok: true }
+}
+
+/** Bandeja completa de opiniones. Solo admin. */
+export async function getAdminFeedback(): Promise<FeedbackEntry[]> {
+  const { data, error } = await supabase.rpc("admin_feedback")
+  if (error || !Array.isArray(data)) {
+    console.error("getAdminFeedback failed", error)
+    return []
+  }
+  return (data as Record<string, unknown>[]).map((f) => ({
+    id: String(f.id),
+    message: String(f.message ?? ""),
+    rating: f.rating == null ? null : Number(f.rating),
+    authorConsent: Boolean(f.author_consent),
+    published: Boolean(f.published),
+    createdAt: new Date(String(f.created_at)),
+    author: String(f.author ?? ""),
+  }))
+}
+
+/** Publica o retira una opinion. Falla si el autor no dio consentimiento. */
+export async function setFeedbackPublished(
+  id: string,
+  published: boolean,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await supabase.rpc("admin_set_feedback_published", {
+    p_id: id,
+    p_published: published,
+  })
+  if (error) {
+    console.error("setFeedbackPublished failed", error)
+    return { ok: false, message: error.message }
+  }
+  return { ok: true }
+}
+
+// ── ACTIVIDAD (panel de admin) ──────────
+
+export async function getGrowth(days = 30): Promise<GrowthData | null> {
+  const { data, error } = await supabase.rpc("admin_growth", { p_days: days })
+  if (error || !data) {
+    console.error("getGrowth failed", error)
+    return null
+  }
+  const d = data as Record<string, unknown>
+  return {
+    days: Number(d.days ?? days),
+    series: (d.series as GrowthDay[]) ?? [],
+    totales: (d.totales as Record<string, number>) ?? {},
+  }
+}
+
+export async function getUserActivity(limit = 50): Promise<UserActivity[]> {
+  const { data, error } = await supabase.rpc("admin_user_activity", { p_limit: limit })
+  if (error || !Array.isArray(data)) {
+    console.error("getUserActivity failed", error)
+    return []
+  }
+  return (data as Record<string, unknown>[]).map((u) => ({
+    id: String(u.id),
+    nombre: String(u.nombre ?? ""),
+    registrado: String(u.registrado ?? ""),
+    eventos: Number(u.eventos ?? 0),
+    ultimaActividad: u.ultima_actividad ? String(u.ultima_actividad) : null,
+    ultimos: (u.ultimos as UserEvent[]) ?? [],
+  }))
+}
+
+/** Actividad del usuario en sesion (mapa de contribuciones del perfil). */
+export async function getMyActivity(days = 365): Promise<MyActivity | null> {
+  const { data, error } = await supabase.rpc("my_activity", { p_days: days })
+  if (error || !data) {
+    console.error("getMyActivity failed", error)
+    return null
+  }
+  const d = data as Record<string, unknown>
+  return {
+    days: Number(d.days ?? days),
+    desde: String(d.desde ?? ""),
+    hasta: String(d.hasta ?? ""),
+    total: Number(d.total ?? 0),
+    dias: (d.dias as Record<string, number>) ?? {},
+    porTipo: (d.por_tipo as Record<string, number>) ?? {},
+    ultimos: (d.ultimos as UserEvent[]) ?? [],
+  }
+}
+
+/** Trayectoria de reputacion del usuario en sesion (grafica del perfil). */
+export async function getMyJourney(): Promise<ReputationJourney | null> {
+  const { data, error } = await supabase.rpc("my_reputation_journey")
+  if (error || !data) {
+    console.error("getMyJourney failed", error)
+    return null
+  }
+  const d = data as Record<string, unknown>
+  return {
+    puntos: (d.puntos as ReputationJourney["puntos"]) ?? [],
+    hitos: (d.hitos as ReputationJourney["hitos"]) ?? [],
+    resumen: (d.resumen as ReputationJourney["resumen"]) ?? {
+      score: 0, competencias: 0, victorias: 0, mejor: 0, agentes: 0,
+    },
+  }
 }

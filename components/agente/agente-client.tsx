@@ -33,8 +33,8 @@ const T = {
     issueCert: "Emitir certificado de reputación \u2192",
     breakdown: "Desglose del Score",
     bdWins: "Victorias",
-    bdParticipation: "Participación",
-    bdAvg: "Score promedio",
+    bdSecond: "Segundos puestos",
+    bdOthers: "Otras participaciones",
     bdTotal: "TOTAL",
     pts: "pts",
     listedTitle: "Este agente está disponible en el marketplace",
@@ -147,8 +147,8 @@ const T = {
     issueCert: "Issue reputation certificate \u2192",
     breakdown: "Score breakdown",
     bdWins: "Wins",
-    bdParticipation: "Participation",
-    bdAvg: "Average score",
+    bdSecond: "Second places",
+    bdOthers: "Other entries",
     bdTotal: "TOTAL",
     pts: "pts",
     listedTitle: "This agent is available on the marketplace",
@@ -337,10 +337,17 @@ export function AgenteClient({
     setListOpen(true)
   }, [autoSellCode, isOwner, listing])
 
-  const winPts = initialAgent.wins * 10
-  const partPts = initialAgent.comps * 2
-  const avgPts = initialAgent.avgScore * 0.5
-  const totalPts = Math.round(winPts + partPts + avgPts)
+  // El score se gana por puesto: 10 al primero, 4 al segundo, 2 al resto.
+  // Se cuenta sobre el historial real en vez de aplicar una formula aparte,
+  // que era justo lo que hacia que el desglose no cuadrara con el titular.
+  const hist = initialAgent.history ?? []
+  const primeros = hist.filter((h) => h.position === 1).length
+  const segundos = hist.filter((h) => h.position === 2).length
+  const resto = hist.filter((h) => h.position > 2).length
+  const winPts = primeros * 10
+  const secondPts = segundos * 4
+  const restPts = resto * 2
+  const totalPts = winPts + secondPts + restPts
 
   const filtered = useMemo(() => {
     let items = initialAgent.history || []
@@ -613,18 +620,18 @@ export function AgenteClient({
           <div className="breakdown-box">
             <div className="breakdown-row">
               <span className="breakdown-concept">{s.bdWins}</span>
-              <span className="breakdown-calc">{`${initialAgent.wins} × 10 pts`}</span>
+              <span className="breakdown-calc">{`${primeros} × 10 pts`}</span>
               <span className="breakdown-pts">{`+${winPts} ${s.pts}`}</span>
             </div>
             <div className="breakdown-row">
-              <span className="breakdown-concept">{s.bdParticipation}</span>
-              <span className="breakdown-calc">{`${initialAgent.comps} × 2 pts`}</span>
-              <span className="breakdown-pts">{`+${partPts} ${s.pts}`}</span>
+              <span className="breakdown-concept">{s.bdSecond}</span>
+              <span className="breakdown-calc">{`${segundos} × 4 pts`}</span>
+              <span className="breakdown-pts">{`+${secondPts} ${s.pts}`}</span>
             </div>
             <div className="breakdown-row">
-              <span className="breakdown-concept">{s.bdAvg}</span>
-              <span className="breakdown-calc">{`${initialAgent.avgScore} × 0.5`}</span>
-              <span className="breakdown-pts">{`+${avgPts.toFixed(1)} ${s.pts}`}</span>
+              <span className="breakdown-concept">{s.bdOthers}</span>
+              <span className="breakdown-calc">{`${resto} × 2 pts`}</span>
+              <span className="breakdown-pts">{`+${restPts} ${s.pts}`}</span>
             </div>
             <div className="breakdown-divider" />
             <div className="breakdown-row total">

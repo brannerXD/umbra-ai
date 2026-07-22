@@ -216,3 +216,101 @@ export interface CertificateIssuance {
   score: number
   issuedAt: Date
 }
+
+// ── OPINIONES Y ACTIVIDAD (panel de admin) ──
+
+/** Opinion enviada por un usuario. Nace privada. */
+export interface FeedbackEntry {
+  id: string
+  message: string
+  rating: number | null
+  /** El autor autorizo mostrarla publicamente. Sin esto no se puede publicar. */
+  authorConsent: boolean
+  published: boolean
+  createdAt: Date
+  author: string
+}
+
+/** Un dia de la serie de crecimiento. */
+export interface GrowthDay {
+  dia: string
+  usuarios: number
+  agentes: number
+  competencias: number
+  compras: number
+  llamadas: number
+  descargas: number
+  evaluaciones: number
+}
+
+export interface GrowthData {
+  days: number
+  series: GrowthDay[]
+  totales: Record<string, number>
+}
+
+export type UserEventType =
+  | "agente"
+  | "competencia"
+  | "compra"
+  | "llamada_api"
+  | "descarga"
+  | "opinion"
+
+export interface UserEvent {
+  tipo: UserEventType
+  detalle: string
+  cuando: string
+}
+
+/** Resumen de actividad de un usuario, derivado de las tablas existentes. */
+export interface UserActivity {
+  id: string
+  nombre: string
+  registrado: string
+  eventos: number
+  ultimaActividad: string | null
+  ultimos: UserEvent[]
+}
+
+/** Actividad propia del usuario, para el mapa de contribuciones del perfil. */
+export interface MyActivity {
+  days: number
+  desde: string
+  hasta: string
+  total: number
+  /** Solo los dias con actividad: { "2026-07-02": 2 }. */
+  dias: Record<string, number>
+  porTipo: Record<string, number>
+  ultimos: UserEvent[]
+}
+
+/** Un punto de la trayectoria: una competencia y el score tras ella. */
+export interface JourneyPoint {
+  fecha: string
+  score: number
+  puntos: number
+  puntuacion: number
+  puesto: number
+  gano: boolean
+  competencia: string
+  agente: string
+}
+
+export interface JourneyMilestone {
+  fecha: string
+  tipo: "agente" | "listado" | "venta"
+  detalle: string
+}
+
+export interface ReputationJourney {
+  puntos: JourneyPoint[]
+  hitos: JourneyMilestone[]
+  resumen: {
+    score: number
+    competencias: number
+    victorias: number
+    mejor: number
+    agentes: number
+  }
+}

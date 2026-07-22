@@ -1664,3 +1664,47 @@ a.btn-primary:active,
   .footer-brand { margin-right: 0; flex-wrap: wrap; row-gap: 4px; }
   .footer-tagline { flex-basis: 100%; margin-left: 0; }
 }
+
+/* ── Opiniones ── */
+
+/* El boton de opinion vive entre los enlaces del footer: se le quita el aspecto
+   de boton para que no compita con la navegacion. */
+.footer-feedback {
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--transition);
+}
+.footer-feedback:hover { color: var(--text); }
+
+.feedback-stars {
+  display: flex;
+  gap: 6px;
+}
+
+.feedback-star {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-3);
+  line-height: 0;
+  transition: color var(--transition), transform var(--transition);
+}
+.feedback-star svg { width: 22px; height: 22px; }
+.feedback-star:hover { transform: scale(1.12); }
+.feedback-star.on { color: var(--amber, #d19a30); }
+.feedback-star.on svg { fill: currentColor; }
+
+/* CAPTCHA (Turnstile) en el modal de auth. Se centra y respira; si la llave no
+   está configurada el widget no se renderiza y esto no aplica a nada. */
+.turnstile-widget {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 2px;
+  min-height: 65px;
+}

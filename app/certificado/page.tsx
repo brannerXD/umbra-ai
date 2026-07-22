@@ -5,7 +5,6 @@ import {
   MIN_COMPS_FOR_CERTIFICATE,
   getAgentById,
   getCertificateIssuances,
-  issueCertificate,
 } from "@/lib/services"
 import "./certificado.css"
 
@@ -28,10 +27,9 @@ export default async function CertificadoPage({
 
   const eligible = agent.comps >= MIN_COMPS_FOR_CERTIFICATE
 
-  if (eligible) {
-    await issueCertificate(agent, "web")
-  }
-
+  // Ojo: mirar el certificado NO es emitirlo. Antes se registraba una emision
+  // en cada carga de la pagina, asi que el contador subia con cada refresco y
+  // cualquiera podia inflarlo. Solo cuenta la descarga (ver /certificado/pdf).
   const issuances = eligible ? await getCertificateIssuances(agent.id) : []
 
   return <CertificadoClient agent={agent} eligible={eligible} issuances={issuances} />

@@ -4,7 +4,6 @@ import { CertificateMobilePdf, CertificatePdf } from "@/components/certificado/c
 import {
   MIN_COMPS_FOR_CERTIFICATE,
   getAgentById,
-  getCertificateIssuances,
   issueCertificate,
 } from "@/lib/services"
 import type { Lang } from "@/lib/i18n"
@@ -26,11 +25,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No se pudo emitir el certificado." }, { status: 500 })
   }
 
-  const issuances = await getCertificateIssuances(agent.id)
   const document = isMobile ? (
-    <CertificateMobilePdf agent={agent} issuance={issuance} totalIssued={issuances.length} lang={lang} />
+    <CertificateMobilePdf agent={agent} issuance={issuance} lang={lang} />
   ) : (
-    <CertificatePdf agent={agent} issuance={issuance} totalIssued={issuances.length} lang={lang} />
+    <CertificatePdf agent={agent} issuance={issuance} lang={lang} />
   )
   const buffer = await renderToBuffer(document)
 

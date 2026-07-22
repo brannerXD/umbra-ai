@@ -2,12 +2,17 @@
 
 import { type FormEvent, useEffect, useState } from "react"
 import Link from "next/link"
+import { MessageSquare, Trophy, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
   LabelList,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -17,9 +22,17 @@ import {
 } from "recharts"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
-import { type AdminStats, createCompetition, getAdminStats } from "@/lib/services"
+import {
+  type AdminStats,
+  createCompetition,
+  getAdminFeedback,
+  getAdminStats,
+  getGrowth,
+  getUserActivity,
+  setFeedbackPublished,
+} from "@/lib/services"
 import { supabase } from "@/lib/supabase"
-import type { Category, Competition } from "@/lib/types"
+import type { Category, Competition, FeedbackEntry, GrowthData, UserActivity } from "@/lib/types"
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: "texto", label: "Análisis de Texto" },
@@ -39,6 +52,42 @@ const STATUS_LABEL: Record<string, string> = {
 const ACCENT = "#C9A24B"
 const INK = "#F5F5F0"
 const MUTED = "#6A6A64"
+
+// Rangos disponibles para las graficas de crecimiento.
+const RANGOS = [
+  { dias: 7, label: "7 dias" },
+  { dias: 30, label: "30 dias" },
+  { dias: 90, label: "90 dias" },
+] as const
+
+// Series que se pueden dibujar. Se separan trafico de producto para que una no
+// aplaste a la otra en la escala.
+// Slots categoricos en orden fijo. El color sigue a la entidad, nunca al rango:
+// filtrar una serie no repinta las demas.
+const SERIES = [
+  { key: "usuarios", label: "Usuarios", color: "var(--series-1)" },
+  { key: "agentes", label: "Agentes", color: "var(--series-2)" },
+  { key: "competencias", label: "Competencias", color: "var(--series-3)" },
+  { key: "compras", label: "Compras", color: "var(--series-4)" },
+  { key: "llamadas", label: "Llamadas API", color: "var(--series-5)" },
+] as const
+
+const EVENTO_LABEL: Record<string, string> = {
+  agente: "Registro agente",
+  competencia: "Compitio",
+  compra: "Compra",
+  llamada_api: "Llamada API",
+  descarga: "Descarga",
+  opinion: "Opinion",
+}
+
+function fechaCorta(iso: string | null) {
+  if (!iso) return "—"
+  const d = new Date(iso)
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString("es-CO", { day: "2-digit", month: "short" })
+}
 const STATUS_COLOR: Record<string, string> = {
   completada: "#57534A",
   "en-curso": "#C9A24B",
@@ -49,6 +98,10 @@ interface TipProps {
   active?: boolean
   payload?: { value: number; payload: { label?: string; name?: string } }[]
 }
+function leyendaEnTinta(value: string) {
+  return <span style={{ color: "var(--viz-axis)" }}>{value}</span>
+}
+
 function ChartTip({ active, payload }: TipProps) {
   if (!active || !payload?.length) return null
   const p = payload[0]
@@ -67,6 +120,14 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
 
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
+
+  // Crecimiento, actividad por usuario y bandeja de opiniones.
+  const [growth, setGrowth] = useState<GrowthData | null>(null)
+  const [rango, setRango] = useState<number>(30)
+  const [activity, setActivity] = useState<UserActivity[]>([])
+  const [expandido, setExpandido] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<FeedbackEntry[]>([])
+  const [panelesCargando, setPanelesCargando] = useState(true)
 
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState<Category>("texto")
@@ -93,6 +154,45 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
       active = false
     }
   }, [loading, isAdmin])
+
+  // Opiniones y actividad: se cargan una vez.
+  useEffect(() => {
+    if (loading || !isAdmin) return
+    let active = true
+    Promise.all([getUserActivity(50), getAdminFeedback()]).then(([a, f]) => {
+      if (!active) return
+      setActivity(a)
+      setFeedback(f)
+      setPanelesCargando(false)
+    })
+    return () => {
+      active = false
+    }
+  }, [loading, isAdmin])
+
+  // El crecimiento se vuelve a pedir cada vez que cambia el rango.
+  useEffect(() => {
+    if (loading || !isAdmin) return
+    let active = true
+    getGrowth(rango).then((g) => {
+      if (active) setGrowth(g)
+    })
+    return () => {
+      active = false
+    }
+  }, [loading, isAdmin, rango])
+
+  async function togglePublicada(f: FeedbackEntry) {
+    const res = await setFeedbackPublished(f.id, !f.published)
+    if (!res.ok) {
+      showToast(res.message || "No se pudo cambiar la opinion.", "warn")
+      return
+    }
+    setFeedback((prev) =>
+      prev.map((x) => (x.id === f.id ? { ...x, published: !x.published } : x)),
+    )
+    showToast(f.published ? "Opinion retirada." : "Opinion publicada.", "success")
+  }
 
   if (loading) {
     return (
@@ -205,36 +305,45 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
             </div>
 
             <div className="chart-card">
-              <h2 className="chart-title">Competencias por estado</h2>
-              <div className="donut-wrap">
+              <h2 className="chart-title">Competencias por categoría y estado</h2>
+              {stats.competitionsByCategory.length === 0 ? (
+                <div className="admin-vacio">
+                  <Trophy className="admin-vacio-icono" aria-hidden />
+                  <p className="admin-vacio-titulo">Todavía no hay competencias.</p>
+                  <p className="admin-vacio-sub">Crea la primera desde el formulario de abajo.</p>
+                </div>
+              ) : (
                 <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={54}
-                      outerRadius={82}
-                      paddingAngle={2}
-                      stroke="none"
-                    >
-                      {statusData.map((e) => (
-                        <Cell key={e.key} fill={STATUS_COLOR[e.key] ?? ACCENT} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTip />} />
-                  </PieChart>
+                  <BarChart
+                    data={stats.competitionsByCategory}
+                    layout="vertical"
+                    margin={{ left: 4, right: 20, top: 4, bottom: 4 }}
+                  >
+                    <XAxis type="number" allowDecimals={false} hide />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      width={132}
+                      tick={{ fill: "var(--viz-axis)", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip cursor={{ fill: "rgba(128,128,128,0.08)" }} content={<ChartTip />} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} formatter={leyendaEnTinta} />
+                    {/* Apiladas por estado. El stroke del color de la superficie
+                        crea el separador de 2px sin dibujar un borde. */}
+                    <Bar dataKey="en_curso" name="En curso" stackId="e"
+                         fill="var(--series-1)" stroke="var(--surface)" strokeWidth={2} barSize={17} />
+                    <Bar dataKey="proxima" name="Próximas" stackId="e"
+                         fill="var(--series-4)" stroke="var(--surface)" strokeWidth={2} barSize={17} />
+                    <Bar dataKey="completada" name="Completadas" stackId="e"
+                         fill="var(--series-2)" stroke="var(--surface)" strokeWidth={2} barSize={17}
+                         radius={[0, 4, 4, 0]}>
+                      <LabelList dataKey="total" position="right" fill="var(--text-2)" fontSize={11} />
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
-                <ul className="chart-legend">
-                  {statusData.map((e) => (
-                    <li key={e.key}>
-                      <span className="legend-dot" style={{ background: STATUS_COLOR[e.key] ?? ACCENT }} />
-                      <span className="legend-label">{e.name}</span>
-                      <span className="legend-value">{e.value}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              )}
             </div>
 
             <div className="chart-card chart-card-wide">
@@ -259,6 +368,191 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
             </div>
           </div>
         )}
+
+        {/* ── Crecimiento ── */}
+        <section className="admin-section">
+          <div className="admin-section-head">
+            <h2 className="chart-title">Crecimiento</h2>
+            <div className="admin-range">
+              {RANGOS.map((r) => (
+                <button
+                  key={r.dias}
+                  type="button"
+                  className={`tab-btn-sm${rango === r.dias ? " active" : ""}`}
+                  onClick={() => setRango(r.dias)}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!growth ? (
+            <div className="chart-card kpi-skeleton" style={{ height: 260 }} />
+          ) : (
+            <div className="chart-card">
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={growth.series} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+                  <defs>
+                    {SERIES.map((s) => (
+                      <linearGradient key={s.key} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={s.color} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={s.color} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid stroke="var(--viz-grid)" vertical={false} />
+                  <XAxis
+                    dataKey="dia"
+                    tickFormatter={fechaCorta}
+                    tick={{ fill: "var(--viz-axis)", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    minTickGap={24}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fill: "var(--viz-axis)", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={38}
+                  />
+                  <Tooltip content={<ChartTip />} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} formatter={leyendaEnTinta} />
+                  {SERIES.map((s) => (
+                    <Area
+                      key={s.key}
+                      type="monotone"
+                      dataKey={s.key}
+                      name={s.label}
+                      stroke={s.color}
+                      fill={`url(#g-${s.key})`}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
+              <p className="admin-muted admin-note">
+                Actividad diaria de los ultimos {growth.days} dias. Las visitas y clics los mide
+                Vercel Analytics aparte; esto es actividad de producto.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* ── Actividad por usuario ── */}
+        <section className="admin-section">
+          <h2 className="chart-title">Actividad por usuario</h2>
+          {panelesCargando ? (
+            <div className="chart-card kpi-skeleton" style={{ height: 160 }} />
+          ) : activity.length === 0 ? (
+            <div className="admin-vacio">
+              <Users className="admin-vacio-icono" aria-hidden />
+              <p className="admin-vacio-titulo">Todavía no hay usuarios registrados.</p>
+              <p className="admin-vacio-sub">
+                En cuanto alguien cree su cuenta verás aquí lo que hace.
+              </p>
+            </div>
+          ) : (
+            <div className="admin-card">
+              <div className="actividad-tabla">
+                <div className="actividad-fila actividad-head">
+                  <span>Usuario</span>
+                  <span>Registro</span>
+                  <span>Eventos</span>
+                  <span>Ultima actividad</span>
+                  <span />
+                </div>
+                {activity.map((u) => (
+                  <div key={u.id}>
+                    <div className="actividad-fila">
+                      <span className="actividad-nombre">{u.nombre}</span>
+                      <span className="admin-muted">{fechaCorta(u.registrado)}</span>
+                      <span>{u.eventos}</span>
+                      <span className="admin-muted">{fechaCorta(u.ultimaActividad)}</span>
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm"
+                        disabled={u.eventos === 0}
+                        onClick={() => setExpandido(expandido === u.id ? null : u.id)}
+                      >
+                        {expandido === u.id ? "Ocultar" : "Ver"}
+                      </button>
+                    </div>
+                    {expandido === u.id && (
+                      <div className="actividad-detalle">
+                        {u.ultimos.length === 0 ? (
+                          <p className="admin-muted">Sin actividad registrada.</p>
+                        ) : (
+                          u.ultimos.map((e, i) => (
+                            <div key={i} className="actividad-evento">
+                              <span className={`actividad-tipo tipo-${e.tipo}`}>
+                                {EVENTO_LABEL[e.tipo] ?? e.tipo}
+                              </span>
+                              <span className="actividad-detalle-txt">{e.detalle}</span>
+                              <span className="admin-muted">{fechaCorta(e.cuando)}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Opiniones ── */}
+        <section className="admin-section">
+          <h2 className="chart-title">Opiniones sobre Umbra</h2>
+          {panelesCargando ? (
+            <div className="chart-card kpi-skeleton" style={{ height: 140 }} />
+          ) : feedback.length === 0 ? (
+            <div className="admin-vacio">
+              <MessageSquare className="admin-vacio-icono" aria-hidden />
+              <p className="admin-vacio-titulo">Nadie ha dejado su opinión todavía.</p>
+              <p className="admin-vacio-sub">
+                Aparecerán aquí cuando alguien use el botón “Danos tu opinión” del pie de página.
+              </p>
+            </div>
+          ) : (
+            <div className="opiniones-lista">
+              {feedback.map((f) => (
+                <article key={f.id} className="admin-card opinion-card">
+                  <div className="opinion-head">
+                    <span className="opinion-autor">{f.author}</span>
+                    {f.rating !== null && (
+                      <span className="opinion-rating">{"★".repeat(f.rating)}</span>
+                    )}
+                    <span className="admin-muted">{fechaCorta(f.createdAt.toISOString())}</span>
+                    {f.published && <span className="opinion-badge publicada">Publicada</span>}
+                    {!f.authorConsent && (
+                      <span className="opinion-badge sin-permiso">Sin permiso para publicar</span>
+                    )}
+                  </div>
+                  <p className="opinion-msg">{f.message}</p>
+                  <div className="opinion-acciones">
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      disabled={!f.authorConsent && !f.published}
+                      title={
+                        !f.authorConsent && !f.published
+                          ? "El autor no autorizo publicarla"
+                          : undefined
+                      }
+                      onClick={() => togglePublicada(f)}
+                    >
+                      {f.published ? "Retirar" : "Publicar"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Gestión de competencias */}
         <div className="admin-grid">

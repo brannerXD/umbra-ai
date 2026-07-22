@@ -27,9 +27,9 @@ interface AuthContextValue {
   // Abre el modal de autenticación (correo/contraseña + Google).
   openAuth: (mode?: AuthMode) => void
   signInWithGoogle: () => void
-  signUpWithEmail: (email: string, password: string) => Promise<AuthResult>
-  signInWithEmail: (email: string, password: string) => Promise<AuthResult>
-  resetPassword: (email: string) => Promise<AuthResult>
+  signUpWithEmail: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>
+  signInWithEmail: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>
+  resetPassword: (email: string, captchaToken?: string) => Promise<AuthResult>
   hasAcceptedTerms: () => boolean
   markTermsAccepted: () => void
   signOut: () => void
@@ -57,6 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [avatarChosen, setAvatarChosen] = useState<boolean | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  // El perfil (donde vive is_admin) se consulta en un segundo efecto, despues
+  // de la sesion. Guardar "ya cargue el perfil" como booleano no basta: al
+  // montar, userId es null, el efecto entra por la rama sin-sesion y lo marca
+  // como resuelto; cuando despues llega la sesion queda un instante con
+  // loading=false, perfil "resuelto" e isAdmin aun en false, y la guardia de
+  // /admin expulsa al propio admin. Por eso se guarda DE QUE usuario es el
+  // perfil cargado: si no coincide con el actual, todavia no esta resuelto.
+  // undefined = nunca se ha cargado; null = cargado para "sin sesion".
+  const [profileFor, setProfileFor] = useState<string | null | undefined>(undefined)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>("signin")
 
@@ -82,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfileAvatar(null)
       setAvatarChosen(null)
       setIsAdmin(false)
+      // Sin sesion no hay perfil que esperar.
+      setProfileFor(null)
       return
     }
     let active = true
@@ -95,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfileAvatar((data?.avatar_url as string | null) ?? null)
         setAvatarChosen((data?.avatar_chosen as boolean | null) ?? null)
         setIsAdmin((data?.is_admin as boolean | null) ?? false)
+        setProfileFor(userId)
       })
     return () => {
       active = false
@@ -137,27 +149,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [markTermsAccepted])
 
-  const signUpWithEmail = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/app` },
-    })
-    if (error) return { ok: false, error: error.message }
-    markTermsAccepted()
-    // Sin sesión ⇒ Supabase exige confirmar el correo; con sesión ⇒ entró directo.
-    return { ok: true, needsConfirmation: !data.session }
-  }, [markTermsAccepted])
+  const signUpWithEmail = useCallback(
+    async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/app`, captchaToken },
+      })
+      if (error) return { ok: false, error: error.message }
+      markTermsAccepted()
+      // Sin sesión ⇒ Supabase exige confirmar el correo; con sesión ⇒ entró directo.
+      return { ok: true, needsConfirmation: !data.session }
+    },
+    [markTermsAccepted],
+  )
 
-  const signInWithEmail = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { ok: false, error: error.message }
-    return { ok: true }
-  }, [])
+  const signInWithEmail = useCallback(
+    async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: { captchaToken },
+      })
+      if (error) return { ok: false, error: error.message }
+      return { ok: true }
+    },
+    [],
+  )
 
-  const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
+  const resetPassword = useCallback(async (email: string, captchaToken?: string): Promise<AuthResult> => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset`,
+      captchaToken,
     })
     if (error) return { ok: false, error: error.message }
     return { ok: true }
@@ -183,7 +206,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        // Sigue "cargando" mientras el perfil cargado no sea el del usuario
+        // actual: comparar contra userId invalida el dato al instante, sin
+        // depender de que corra ningun efecto.
+        loading: loading || profileFor !== userId,
         isAdmin: isAdmin && !!user,
         openAuth,
         signInWithGoogle,
