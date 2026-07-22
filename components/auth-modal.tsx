@@ -1,8 +1,9 @@
 "use client"
 
-import { type FormEvent, useState } from "react"
+import { type FormEvent, useCallback, useState } from "react"
 import Link from "next/link"
 import type { AuthResult } from "./auth-provider"
+import { Turnstile, isCaptchaEnabled } from "./turnstile"
 
 export type AuthMode = "signin" | "signup"
 
@@ -13,9 +14,9 @@ interface AuthModalProps {
   onModeChange: (mode: AuthMode) => void
   onClose: () => void
   onGoogle: () => void
-  onSignUp: (email: string, password: string) => Promise<AuthResult>
-  onSignIn: (email: string, password: string) => Promise<AuthResult>
-  onReset: (email: string) => Promise<AuthResult>
+  onSignUp: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>
+  onSignIn: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>
+  onReset: (email: string, captchaToken?: string) => Promise<AuthResult>
   hasAcceptedTerms: boolean
 }
 
@@ -48,9 +49,23 @@ export function AuthModal({
   const [terms, setTerms] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Token del CAPTCHA. `captchaKey` fuerza el remonte del widget para pedir uno
+  // nuevo tras un intento fallido (los tokens de Turnstile son de un solo uso).
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaKey, setCaptchaKey] = useState(0)
+  const captchaOn = isCaptchaEnabled()
+
+  const onCaptcha = useCallback((t: string) => setCaptchaToken(t), [])
+  const onCaptchaExpire = useCallback(() => setCaptchaToken(null), [])
+  // Tras un fallo, el token ya se consumió: se limpia y se remonta el widget.
+  function resetCaptcha() {
+    setCaptchaToken(null)
+    setCaptchaKey((k) => k + 1)
+  }
 
   function toPanel(signup: boolean) {
     setError(null)
+    resetCaptcha()
     setSignUpActive(signup)
     onModeChange(signup ? "signup" : "signin")
   }
@@ -62,10 +77,17 @@ export function AuthModal({
       setError("Escribe tu correo y contraseña.")
       return
     }
+    if (captchaOn && !captchaToken) {
+      setError("Completa la verificación de seguridad.")
+      return
+    }
     setBusy(true)
-    const res = await onSignIn(email.trim(), password)
+    const res = await onSignIn(email.trim(), password, captchaToken ?? undefined)
     setBusy(false)
-    if (!res.ok) setError(translateError(res.error))
+    if (!res.ok) {
+      setError(translateError(res.error))
+      resetCaptcha()
+    }
     // Con sesión: el cambio de estado de auth cierra el modal solo.
   }
 
@@ -84,11 +106,16 @@ export function AuthModal({
       setError("Debes aceptar los Términos y la Política de Privacidad.")
       return
     }
+    if (captchaOn && !captchaToken) {
+      setError("Completa la verificación de seguridad.")
+      return
+    }
     setBusy(true)
-    const res = await onSignUp(email.trim(), password)
+    const res = await onSignUp(email.trim(), password, captchaToken ?? undefined)
     setBusy(false)
     if (!res.ok) {
       setError(translateError(res.error))
+      resetCaptcha()
       return
     }
     if (res.needsConfirmation) setView("confirm-sent")
@@ -110,11 +137,16 @@ export function AuthModal({
       setError("Escribe tu correo.")
       return
     }
+    if (captchaOn && !captchaToken) {
+      setError("Completa la verificación de seguridad.")
+      return
+    }
     setBusy(true)
-    const res = await onReset(email.trim())
+    const res = await onReset(email.trim(), captchaToken ?? undefined)
     setBusy(false)
     if (!res.ok) {
       setError(translateError(res.error))
+      resetCaptcha()
       return
     }
     setView("reset-sent")
@@ -155,6 +187,7 @@ export function AuthModal({
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com" autoComplete="email" />
             </label>
             {error && <p className="auth-error">{error}</p>}
+            <Turnstile key={`reset-${captchaKey}`} onToken={onCaptcha} onExpire={onCaptchaExpire} />
             <button type="submit" className="btn-primary" disabled={busy}><span>{busy ? "Enviando…" : "Enviar enlace"}</span></button>
             <button type="button" className="auth-link-btn" onClick={() => { setError(null); setView("card") }}>← Volver</button>
           </form>
@@ -178,6 +211,9 @@ export function AuthModal({
                   <span>Acepto los <Link href="/terminos" target="_blank">Términos</Link> y la <Link href="/privacidad" target="_blank">Política</Link>.</span>
                 </label>
                 {signUpActive && error && <p className="auth-error">{error}</p>}
+                {signUpActive && (
+                  <Turnstile key={`signup-${captchaKey}`} onToken={onCaptcha} onExpire={onCaptchaExpire} />
+                )}
                 <button type="submit" className="btn-primary" disabled={busy}><span>{busy ? "Un momento…" : "Crear cuenta"}</span></button>
                 <div className="auth-divider"><span>o</span></div>
                 <button type="button" className="btn-ghost auth-google" onClick={handleGoogle} disabled={busy}>
@@ -208,6 +244,9 @@ export function AuthModal({
                 </label>
                 <button type="button" className="auth-forgot" onClick={() => { setError(null); setView("reset") }}>¿Olvidaste tu contraseña?</button>
                 {!signUpActive && error && <p className="auth-error">{error}</p>}
+                {!signUpActive && (
+                  <Turnstile key={`signin-${captchaKey}`} onToken={onCaptcha} onExpire={onCaptchaExpire} />
+                )}
                 <button type="submit" className="btn-primary" disabled={busy}><span>{busy ? "Un momento…" : "Entrar"}</span></button>
                 <div className="auth-divider"><span>o</span></div>
                 <button type="button" className="btn-ghost auth-google" onClick={handleGoogle} disabled={busy}>

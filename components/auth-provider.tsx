@@ -27,9 +27,9 @@ interface AuthContextValue {
   // Abre el modal de autenticación (correo/contraseña + Google).
   openAuth: (mode?: AuthMode) => void
   signInWithGoogle: () => void
-  signUpWithEmail: (email: string, password: string) => Promise<AuthResult>
-  signInWithEmail: (email: string, password: string) => Promise<AuthResult>
-  resetPassword: (email: string) => Promise<AuthResult>
+  signUpWithEmail: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>
+  signInWithEmail: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>
+  resetPassword: (email: string, captchaToken?: string) => Promise<AuthResult>
   hasAcceptedTerms: () => boolean
   markTermsAccepted: () => void
   signOut: () => void
@@ -149,27 +149,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [markTermsAccepted])
 
-  const signUpWithEmail = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/app` },
-    })
-    if (error) return { ok: false, error: error.message }
-    markTermsAccepted()
-    // Sin sesión ⇒ Supabase exige confirmar el correo; con sesión ⇒ entró directo.
-    return { ok: true, needsConfirmation: !data.session }
-  }, [markTermsAccepted])
+  const signUpWithEmail = useCallback(
+    async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/app`, captchaToken },
+      })
+      if (error) return { ok: false, error: error.message }
+      markTermsAccepted()
+      // Sin sesión ⇒ Supabase exige confirmar el correo; con sesión ⇒ entró directo.
+      return { ok: true, needsConfirmation: !data.session }
+    },
+    [markTermsAccepted],
+  )
 
-  const signInWithEmail = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { ok: false, error: error.message }
-    return { ok: true }
-  }, [])
+  const signInWithEmail = useCallback(
+    async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: { captchaToken },
+      })
+      if (error) return { ok: false, error: error.message }
+      return { ok: true }
+    },
+    [],
+  )
 
-  const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
+  const resetPassword = useCallback(async (email: string, captchaToken?: string): Promise<AuthResult> => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset`,
+      captchaToken,
     })
     if (error) return { ok: false, error: error.message }
     return { ok: true }

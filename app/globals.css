@@ -1699,3 +1699,12 @@ a.btn-primary:active,
 .feedback-star:hover { transform: scale(1.12); }
 .feedback-star.on { color: var(--amber, #d19a30); }
 .feedback-star.on svg { fill: currentColor; }
+
+/* CAPTCHA (Turnstile) en el modal de auth. Se centra y respira; si la llave no
+   está configurada el widget no se renderiza y esto no aplica a nada. */
+.turnstile-widget {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 2px;
+  min-height: 65px;
+}
