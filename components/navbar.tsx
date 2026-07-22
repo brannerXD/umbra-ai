@@ -61,6 +61,16 @@ export function Navbar() {
               {t("nav.admin")}
             </Link>
           )}
+          {/* En móvil el engranaje sale de la barra (espacio) y Configuración
+              vive aquí, en el menú, para que también la alcance quien no tiene
+              sesión. En escritorio este enlace se oculta por CSS. */}
+          <Link
+            href="/configuracion"
+            className={`nav-link nav-settings-link ${isActive("/configuracion") ? "active" : ""}`}
+            onClick={() => setMenuOpen(false)}
+          >
+            {t("auth.settings")}
+          </Link>
         </div>
         <div className="nav-right">
           <Link

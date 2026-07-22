@@ -689,6 +689,10 @@ body::before {
 .nav-settings.active { border-color: var(--text); color: var(--text); }
 .nav-settings svg { width: 16px; height: 16px; }
 
+/* El enlace de Configuración dentro del menú solo aplica en móvil; en escritorio
+   se usa el engranaje de la barra. */
+.nav-settings-link { display: none; }
+
 .nav-hamburger {
   display: none;
   flex-direction: column;
@@ -1649,7 +1653,18 @@ a.btn-primary:active,
   .nav-links.open { display: flex; }
   .nav-link { padding: 14px 16px; }
   .nav-hamburger { display: flex; }
+
+  /* En móvil el contenido del navbar no cabe a 360-390px (necesitaba ~439px):
+     se recorta el padding, sale el engranaje a favor del menú, y se encogen
+     logo y botón para que quepa sin "zoom" ni scroll horizontal. */
+  .nav-inner { padding: 0 14px; gap: 8px; }
   .nav-right { gap: 8px; }
+  .nav-right .nav-settings { display: none; }
+  .nav-settings-link { display: block; }
+  .nav-logo .wordmark { font-size: 0.92rem; letter-spacing: 0.16em; }
+  .nav-right .btn-wallet { padding: 8px 12px; font-size: 0.74rem; }
+  /* Nombre largo de usuario: se recorta en vez de desbordar la barra. */
+  .nav-right .btn-wallet.connected { max-width: 132px; overflow: hidden; text-overflow: ellipsis; }
 
   .page-title { font-size: 1.8rem; }
   .section-title { font-size: 1.5rem; }
