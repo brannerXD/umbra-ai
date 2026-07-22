@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { getCategoryLabel, formatListingPrice, getBillingLabel } from "@/lib/umbra"
-import { getAgentVersions, getCodeDownloadUrl, getPurchasedListingIds, purchaseListing } from "@/lib/services"
+import { getAgentVersions, getCodeDownloadUrl, getPurchasedListingIds, iniciarCompra } from "@/lib/services"
 import type { AgentVersion, MarketplaceListingWithAgent, Agent } from "@/lib/types"
 
 type SortKey = "score-desc" | "price-asc" | "price-desc" | "recent"
@@ -303,30 +303,16 @@ export function MarketplaceClient({
       const versions = await getAgentVersions(selected.listingId)
       versionId = versions[0]?.id ?? null
     }
-    // Sin cobro real todavía, pero la compra sí se registra: es lo que habilita
-    // la descarga del código (la RLS del bucket privado la exige).
-    const ok = await purchaseListing({
-      listingId: selected.listingId,
-      buyerId: user.id,
-      price: selected.price,
-      priceUnit: selected.priceUnit,
-      versionId,
-    })
+    // La compra la crea el SERVIDOR y solo se completa cuando la pasarela
+    // confirma el pago. Aqui solo se pide la URL y se envia al comprador.
+    const res = await iniciarCompra({ listingId: selected.listingId, versionId })
     setProcessing(false)
-    if (!ok) {
-      showToast(s.toastFailed, "warn")
+    if (!res.ok) {
+      showToast(res.message || s.toastFailed, "warn")
       return
     }
-    const { agent, listingType, listingId } = selected
-    // El acceso es NO exclusivo: el listado sigue disponible para otros compradores.
-    setPurchasedIds((prev) => (prev.includes(listingId) ? prev : [...prev, listingId]))
-    setSelected(null)
-    showToast(
-      listingType === "codigo"
-        ? `${s.toastBoughtCodeA}${agent.name}${s.toastBoughtCodeB}`
-        : `${s.toastAccessA}${agent.name}${s.toastAccessB}`,
-      "success",
-    )
+    // Mercado Pago devuelve al comprador a /mis-compras cuando termina.
+    window.location.href = res.url
   }
 
   async function downloadCode(listing: MarketplaceListingWithAgent) {
