@@ -1723,3 +1723,89 @@ a.btn-primary:active,
   margin: 4px 0 2px;
   min-height: 65px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE-FIRST — refinamiento para teléfonos (320-480px)
+   Todo va dentro de media queries: tablet y escritorio quedan idénticos.
+   Problema de fondo: los clamp() de tipografía tenían mínimos pensados
+   para tablet (2.2-2.6rem), y como vw es pequeño en un teléfono el clamp
+   siempre elegía ese mínimo. Sumado a los 28px de padding del contenedor,
+   el contenido quedaba estrecho y los títulos ocupaban 5 líneas.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* Recupera ~20px de ancho útil en cada pantalla. */
+  .container { padding: 0 20px; }
+
+  /* Objetivos táctiles cómodos (recomendación: >=44px). */
+  .btn-primary,
+  .btn-ghost,
+  .btn-wallet,
+  .tab-btn,
+  .filter-select { min-height: 44px; }
+
+  .page-empty { padding: 48px 16px; }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 0 16px; }
+
+  /* Titulares proporcionados al teléfono, no al tablet. */
+  .page-title { font-size: clamp(1.75rem, 7.5vw, 2.2rem); }
+  .section-title { font-size: clamp(1.35rem, 6vw, 1.7rem); }
+  .section-sub { font-size: 0.94rem; }
+
+  .page-empty { padding: 40px 12px; }
+
+  /* Los modales aprovechan el ancho en lugar de dejar aire a los lados. */
+  .modal-box { padding: 22px 18px; width: calc(100vw - 24px); }
+}
+
+/* ═══ NAVBAR MÓVIL A PRUEBA DE DESBORDE ═══
+   El hamburguesa desaparecia en telefonos angostos: el contenido necesitaba
+   ~355px y en una pantalla de 360px cualquier extra (avatar, nombre largo)
+   lo empujaba fuera, donde el overflow-x:hidden del body lo recortaba.
+   En vez de recortar milimetros, se define QUE cede: el hamburguesa y el
+   tema son intocables (flex-shrink:0) y el boton de sesion se encoge y
+   recorta con puntos suspensivos. Asi la navegacion nunca se pierde. */
+
+@media (max-width: 768px) {
+  .nav-inner { min-width: 0; }
+  .nav-logo { flex-shrink: 0; }
+  .nav-hamburger { flex-shrink: 0; }
+  .nav-right { min-width: 0; }
+  .nav-right .theme-toggle { flex-shrink: 0; }
+
+  /* La pieza flexible: cede antes que la navegación. */
+  .nav-right .btn-wallet {
+    min-width: 0;
+    flex-shrink: 1;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Teléfonos muy angostos (Galaxy S23, iPhone SE y menores). */
+@media (max-width: 380px) {
+  .nav-inner { padding: 0 12px; gap: 6px; }
+  .nav-right { gap: 6px; }
+  .nav-right .btn-wallet { max-width: 92px; padding: 8px 10px; font-size: 0.7rem; }
+  .nav-logo .wordmark { font-size: 0.86rem; letter-spacing: 0.12em; }
+}
+
+/* ═══ FOOTER: desbordaba en móvil ═══
+   .footer-links era un flex de 6 enlaces SIN flex-wrap → una fila de 440px
+   que se salía de una pantalla de 375. Y .footer-brand se dimensionaba al
+   contenido de la tagline (433px) porque el contenedor era shrink-to-fit.
+   Con align-items:stretch los hijos toman el ancho real del contenedor y el
+   texto envuelve dentro, en vez de estirarlo. */
+
+@media (max-width: 768px) {
+  .footer-inner { align-items: stretch; }
+  .footer-inner > * { max-width: 100%; min-width: 0; }
+  .footer-links { flex-wrap: wrap; gap: 12px 18px; }
+  .footer-brand { flex-wrap: wrap; }
+  .footer-tagline { flex-basis: 100%; margin-left: 0; }
+}

@@ -278,3 +278,25 @@
 @media (max-width: 600px) {
   .ranking-orbit { display: none; }
 }
+
+/* ═══ MOBILE-FIRST — hero de /app ═══
+   Mismo problema que la landing: el clamp tenía mínimo 2.4rem (38.4px).
+   Solo dentro de media queries → escritorio intacto. */
+
+@media (max-width: 768px) {
+  .hero { padding: calc(var(--nav-h) + 40px) 0 56px; }
+  .hero-title {
+    font-size: clamp(1.7rem, 8vw, 2.6rem);
+    line-height: 1.14;
+  }
+  .hero-sub { font-size: 1rem; max-width: none; }
+  .hero-content { max-width: none; }
+  .section-ranking { padding: 56px 0; }
+}
+
+@media (max-width: 480px) {
+  .hero { padding: calc(var(--nav-h) + 28px) 0 44px; }
+  .hero-title { font-size: clamp(1.6rem, 8.5vw, 2.2rem); }
+  .hero-sub { font-size: 0.96rem; }
+  .section-ranking, .section-comps { padding: 44px 0; }
+}

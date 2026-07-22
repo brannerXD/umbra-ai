@@ -603,3 +603,42 @@
   .landing-section { padding: 64px 0; }
   .landing-cta-section { padding: 80px 0 96px; }
 }
+
+/* ═══ MOBILE-FIRST — hero y secciones de la landing ═══
+   Va al final del archivo a propósito: así gana en el orden de cascada
+   sobre las reglas de escritorio de arriba, sin tener que editarlas.
+   Todo dentro de media queries → escritorio y tablet intactos. */
+
+@media (max-width: 768px) {
+  /* El clamp original tenía mínimo 2.6rem (41.6px): en un teléfono el título
+     se partía en 5 líneas. Ahora escala con el ancho real del dispositivo. */
+  .landing-title {
+    font-size: clamp(1.75rem, 8.5vw, 2.75rem);
+    line-height: 1.12;
+    margin-bottom: 18px;
+  }
+
+  .landing-hero { padding: 24px 0 64px; }
+  .landing-eyebrow { margin-bottom: 20px; font-size: 0.72rem; padding: 5px 13px; }
+
+  /* max-width de escritorio ya no aplica: que use todo el ancho disponible. */
+  .landing-sub {
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: none;
+    margin-bottom: 30px;
+  }
+
+  .landing-hero-word { font-size: clamp(2rem, 11vw, 3.4rem); }
+  .landing-section { padding: 60px 0; }
+  .landing-cta-section { padding: 68px 0 76px; }
+  .landing-cta-title { font-size: clamp(1.6rem, 7vw, 2.4rem); }
+}
+
+@media (max-width: 480px) {
+  .landing-title { font-size: clamp(1.7rem, 9vw, 2.3rem); }
+  .landing-sub { font-size: 0.96rem; margin-bottom: 26px; }
+  .landing-section { padding: 48px 0; }
+  .landing-cta-section { padding: 56px 0 64px; }
+  .landing-metric { padding: 16px 18px; }
+}
