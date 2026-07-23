@@ -273,8 +273,12 @@ export async function registerAgent(input: {
   name: string
   description: string
   category: Category
-  // Opcional: los agentes que solo se venden como código no necesitan endpoint.
+  // Un agente puede ser de tres clases, y solo una de estas dos columnas se llena:
+  //   endpoint      → el creador desplego su propio servidor.
+  //   systemPrompt  → Umbra lo ejecuta contra un modelo (no requiere servidor).
+  //   ninguna       → solo se vende como codigo, no compite.
   endpoint?: string | null
+  systemPrompt?: string | null
   ownerId: string
 }): Promise<Agent | null> {
   const { data, error } = await supabase
@@ -285,6 +289,7 @@ export async function registerAgent(input: {
       category: input.category,
       category_label: getCategoryLabel(input.category),
       endpoint: input.endpoint ?? null,
+      system_prompt: input.systemPrompt ?? null,
       owner_id: input.ownerId,
       verified: true,
     })
@@ -296,6 +301,36 @@ export async function registerAgent(input: {
     return null
   }
   return mapAgent(data as AgentRow)
+}
+
+/**
+ * Ejecuta un prompt de sistema contra el modelo, sin guardar nada. Sirve para
+ * que el creador vea a su agente responder antes de registrarlo.
+ */
+export async function probarAgente(
+  systemPrompt: string,
+  prompt: string,
+): Promise<{ ok: boolean; respuesta?: string; ms?: number; message?: string }> {
+  const { data, error } = await supabase.functions.invoke("probar-agente", {
+    body: { systemPrompt, prompt },
+  })
+  if (error && !data) {
+    return { ok: false, message: "No se pudo contactar el motor de agentes." }
+  }
+  if (!data?.ok) {
+    return { ok: false, message: data?.message ?? "El agente no devolvió respuesta." }
+  }
+  return { ok: true, respuesta: data.respuesta, ms: data.ms }
+}
+
+/**
+ * Devuelve el prompt de sistema de un agente propio. La columna esta revocada
+ * para el cliente, asi que pasa por una RPC que valida la propiedad.
+ */
+export async function getMyAgentPrompt(agentId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("my_agent_prompt", { p_agent_id: agentId })
+  if (error) return null
+  return (data as string | null) ?? null
 }
 
 // ── COMPETENCIAS ─────────────────────────

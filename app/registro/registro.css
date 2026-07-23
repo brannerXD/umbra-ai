@@ -692,3 +692,86 @@
     justify-content: center;
   }
 }
+
+/* ========================================
+   AGENTES POR PROMPT
+   Registro sin servidor: instrucciones + prueba en vivo.
+   ======================================== */
+
+/* Tres modalidades en vez de dos. En movil caen una debajo de otra. */
+.sell-type-toggle.tres {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Boton que se lee como enlace: acciones secundarias dentro de un campo. */
+.link-inline {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: var(--text-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--transition);
+}
+.link-inline:hover { color: var(--text); }
+
+/* El prompt es codigo del creador: monoespaciada y con aire para leerlo. */
+.prompt-textarea {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  resize: vertical;
+  min-height: 190px;
+}
+
+/* Respuesta del agente en la prueba. */
+.agent-reply {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 13px;
+}
+
+.agent-reply-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.agent-reply-ms {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+
+.agent-reply-body {
+  margin: 0 0 11px;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .sell-type-toggle.tres {
+    grid-template-columns: 1fr;
+  }
+  .prompt-textarea {
+    min-height: 160px;
+  }
+}
