@@ -14,6 +14,7 @@ const LINKS: { href: string; key: TKey }[] = [
   { href: "/competencias", key: "nav.competencias" },
   { href: "/app",          key: "nav.ranking"       },
   { href: "/marketplace",  key: "nav.marketplace"   },
+  { href: "/buscar",       key: "nav.buscar"        },
 ]
 
 export function Navbar() {

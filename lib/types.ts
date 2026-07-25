@@ -33,6 +33,15 @@ export interface Agent {
   lastComp: string
   history: AgentHistoryEntry[]
   scoreEvolution: number[]
+  /** Quién creó el agente. Puede faltar si la consulta no lo pidió. */
+  creator?: AgentCreator | null
+}
+
+/** Autor de un agente, para mostrar "hecho por" y enlazar a su perfil. */
+export interface AgentCreator {
+  id: string
+  username: string
+  avatarUrl: string | null
 }
 
 export interface EvaluationCriterion {
@@ -185,11 +194,40 @@ export interface SellerStats {
 
 export interface UserProfile {
   id: string
-  email: string | null
   username: string
   avatarUrl: string | null
   bio: string
   usernameUpdatedAt: Date
+}
+
+/** Resumen público de un usuario (buscador, listados). Sin email. */
+export interface ProfileSummary {
+  id: string
+  username: string
+  avatarUrl: string | null
+  bio: string
+}
+
+/** Perfil público de un usuario: lo que ve cualquiera al visitar /u?id=. */
+export interface PublicProfile {
+  id: string
+  username: string
+  avatarUrl: string | null
+  bio: string
+  createdAt: Date
+  agents: Agent[]
+  stats: { agents: number; totalScore: number; wins: number; bestScore: number }
+  /** Insignia: creó al menos un agente. */
+  firstAgent: boolean
+}
+
+/** Fila del listado de usuarios en el panel de admin. */
+export interface AdminProfile {
+  id: string
+  username: string
+  avatarUrl: string | null
+  createdAt: Date
+  agentsCount: number
 }
 
 export type ActivityEventType = "registered" | "competed" | "listed"

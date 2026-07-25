@@ -20,6 +20,7 @@ const es = {
   "nav.competencias": "Competencias",
   "nav.ranking": "Ranking",
   "nav.marketplace": "Marketplace",
+  "nav.buscar": "Buscar",
   "nav.admin": "Admin",
   "nav.menu": "Menú",
 
@@ -168,6 +169,7 @@ const en: Record<TKey, string> = {
   "nav.competencias": "Competitions",
   "nav.ranking": "Ranking",
   "nav.marketplace": "Marketplace",
+  "nav.buscar": "Search",
   "nav.admin": "Admin",
   "nav.menu": "Menu",
 

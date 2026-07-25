@@ -467,7 +467,9 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
                 {activity.map((u) => (
                   <div key={u.id}>
                     <div className="actividad-fila">
-                      <span className="actividad-nombre">{u.nombre}</span>
+                      <Link href={`/u?id=${u.id}`} className="actividad-nombre actividad-nombre-link">
+                        {u.nombre}
+                      </Link>
                       <span className="admin-muted">{fechaCorta(u.registrado)}</span>
                       <span>{u.eventos}</span>
                       <span className="admin-muted">{fechaCorta(u.ultimaActividad)}</span>
