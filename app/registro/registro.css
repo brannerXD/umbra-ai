@@ -775,3 +775,24 @@
     min-height: 160px;
   }
 }
+
+/* Aviso de la opción futura "usar la API de Umbra (mensualidad)". */
+.byok-soon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 0.76rem;
+  color: var(--text-3);
+}
+.byok-soon-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
+}
