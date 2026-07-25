@@ -20,6 +20,8 @@ const T = {
     submitting: "Inscribiendo...",
     ok: "Tu agente fue inscrito. Comenzará cuando la competencia inicie.",
     err: "No se pudo inscribir el agente. Intenta de nuevo.",
+    already: "Ya inscrito",
+    alreadyMsg: "Ese agente ya está inscrito en esta competencia.",
   },
   en: {
     close: "Close",
@@ -32,6 +34,8 @@ const T = {
     submitting: "Entering...",
     ok: "Your agent is entered. It will start when the competition begins.",
     err: "The agent could not be entered. Please try again.",
+    already: "Already entered",
+    alreadyMsg: "That agent is already entered in this competition.",
   },
 } as const
 
@@ -62,15 +66,23 @@ export function InscripcionModal({ comp, myAgents, onClose, onEnrolled }: Inscri
 
   if (!comp) return null
 
+  // Agentes que ya están inscritos en esta competencia (vienen en los resultados).
+  const enrolledIds = new Set(comp.results?.map((r) => r.agentId) ?? [])
+
   const confirm = async () => {
     if (!selectedAgent || !comp) return
     setSubmitting(true)
-    const ok = await enrollAgent(comp.id, selectedAgent)
+    const res = await enrollAgent(comp.id, selectedAgent)
     setSubmitting(false)
-    if (ok) {
+    if (res.ok) {
       onClose()
       onEnrolled()
       showToast(s.ok, "success")
+    } else if (res.already) {
+      // Ya estaba inscrito: no es un error, solo refrescamos para que se vea.
+      onClose()
+      onEnrolled()
+      showToast(s.alreadyMsg, "warn")
     } else {
       showToast(s.err, "warn")
     }
@@ -92,24 +104,32 @@ export function InscripcionModal({ comp, myAgents, onClose, onEnrolled }: Inscri
         <p className="modal-sub">{s.sub}</p>
 
         <div className="agent-options">
-          {myAgents.map((a) => (
-            <button
-              key={a.id}
-              className={`agent-option ${selectedAgent === a.id ? "selected" : ""}`}
-              onClick={() => setSelectedAgent(a.id)}
-            >
-              <div className="agent-avatar-sm">{getInitials(a.name)}</div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: ".88rem" }}>{a.name}</div>
-                <div style={{ fontSize: ".75rem", color: "var(--text-3)" }}>
-                  {getCategoryLabel(a.category, lang)}
+          {myAgents.map((a) => {
+            const yaInscrito = enrolledIds.has(a.id)
+            return (
+              <button
+                key={a.id}
+                className={`agent-option ${selectedAgent === a.id ? "selected" : ""} ${yaInscrito ? "enrolled" : ""}`}
+                disabled={yaInscrito}
+                onClick={() => !yaInscrito && setSelectedAgent(a.id)}
+              >
+                <div className="agent-avatar-sm">{getInitials(a.name)}</div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: ".88rem" }}>{a.name}</div>
+                  <div style={{ fontSize: ".75rem", color: "var(--text-3)" }}>
+                    {getCategoryLabel(a.category, lang)}
+                  </div>
                 </div>
-              </div>
-              <span className="agent-opt-score">
-                {s.score} {a.score}
-              </span>
-            </button>
-          ))}
+                {yaInscrito ? (
+                  <span className="agent-opt-enrolled">{s.already}</span>
+                ) : (
+                  <span className="agent-opt-score">
+                    {s.score} {a.score}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         <div className="modal-warning">

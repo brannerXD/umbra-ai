@@ -1269,7 +1269,26 @@ a.btn-primary:active,
 .agent-option:hover { border-color: var(--border-2); }
 .agent-option.selected { border-color: var(--text); }
 
+/* Agente ya inscrito en esta competencia: no se puede volver a elegir. */
+.agent-option.enrolled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.agent-option.enrolled:hover { border-color: var(--border); }
+
 .agent-opt-score { margin-left: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-3); }
+
+.agent-opt-enrolled {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 35%, var(--border));
+  background: var(--green-dim);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
 
 /* TOASTS */
 .toast-container {

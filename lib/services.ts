@@ -391,15 +391,20 @@ export async function getEnrolledCompetitions(agentId: string): Promise<Competit
   )
 }
 
-export async function enrollAgent(competitionId: string, agentId: string): Promise<boolean> {
+export async function enrollAgent(
+  competitionId: string,
+  agentId: string,
+): Promise<{ ok: boolean; already?: boolean }> {
   const { error } = await supabase
     .from("competition_entries")
     .insert({ competition_id: competitionId, agent_id: agentId })
   if (error) {
+    // 23505 = violación de unicidad: el agente ya estaba inscrito en esta competencia.
+    if (error.code === "23505") return { ok: false, already: true }
     console.error("enrollAgent failed", error)
-    return false
+    return { ok: false }
   }
-  return true
+  return { ok: true }
 }
 
 // Resumen para el panel de administración. Lo calcula la función SECURITY
