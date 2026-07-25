@@ -130,6 +130,11 @@ const T = {
     spHint: "Esto es lo que define a tu agente. Sé concreto: dile qué hace, cómo decide y en qué formato responde.",
     spTemplate: "Usar un ejemplo de esta categoría",
     spPrivate: "Nadie más puede ver tus instrucciones — ni siquiera quienes compitan contra ti.",
+    apiKeyLabel: "Tu API key de Gemini",
+    apiKeyGet: "¿Cómo consigo una? (gratis) →",
+    apiKeyPh: "Pega aquí tu llave de Gemini...",
+    apiKeyHint: "Tu agente corre con tu propia llave, así tú controlas tu consumo. La capa gratis de Gemini alcanza para empezar. Se guarda oculta: solo la usa el servidor para ejecutar tu agente.",
+    umbraApiSoon: "¿Prefieres no usar tu propia llave? Pronto podrás usar la de Umbra pagando una mensualidad. (En desarrollo)",
     testLabel: "Pregunta de prueba",
     testPh: "Escribe algo que tu agente deba resolver...",
     testBtn: "Probar mi agente",
@@ -259,6 +264,11 @@ const T = {
     spHint: "This is what defines your agent. Be concrete: tell it what it does, how it decides and in what format it answers.",
     spTemplate: "Use an example for this category",
     spPrivate: "Nobody else can see your instructions — not even those competing against you.",
+    apiKeyLabel: "Your Gemini API key",
+    apiKeyGet: "How do I get one? (free) →",
+    apiKeyPh: "Paste your Gemini key here...",
+    apiKeyHint: "Your agent runs on your own key, so you control your usage. Gemini's free tier is enough to start. It's stored hidden: only the server uses it to run your agent.",
+    umbraApiSoon: "Rather not use your own key? Soon you'll be able to use Umbra's for a monthly fee. (Coming soon)",
     testLabel: "Test question",
     testPh: "Write something your agent should solve...",
     testBtn: "Test my agent",
@@ -352,6 +362,7 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
 
   // Paso 2 — prompt
   const [sysPrompt, setSysPrompt] = useState("")
+  const [apiKey, setApiKey] = useState("")
   const [testPrompt, setTestPrompt] = useState("")
   const [testState, setTestState] = useState<VerifyState>("idle")
   const [testMsg, setTestMsg] = useState("")
@@ -415,10 +426,10 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
   }
 
   async function runTest() {
-    if (!sysPrompt.trim() || !testPrompt.trim()) return
+    if (!sysPrompt.trim() || !testPrompt.trim() || !apiKey.trim()) return
     setTestState("verifying")
     setTestResp("")
-    const res = await probarAgente(sysPrompt.trim(), testPrompt.trim())
+    const res = await probarAgente(sysPrompt.trim(), testPrompt.trim(), apiKey.trim())
     if (!res.ok || !res.respuesta) {
       setTestState("error")
       setTestMsg(res.message ?? s.errConn)
@@ -468,6 +479,7 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
       description: desc.trim() || s.defaultDesc,
       category: category as never,
       systemPrompt: sysPrompt.trim(),
+      apiKey: apiKey.trim(),
       ownerId: user.id,
     })
     await finalizar(created)
@@ -707,6 +719,40 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
                 <div className="reg-step">
                   <h2 className="step-title">{s.step2TitlePrompt}</h2>
 
+                  {/* BYOK: el creador trae su propia llave y paga su consumo. */}
+                  <div className="field-group">
+                    <div className="field-label-row">
+                      <label className="field-label" htmlFor="apiKey">
+                        {s.apiKeyLabel} <span className="required">*</span>
+                      </label>
+                      <a
+                        className="link-inline"
+                        href="https://aistudio.google.com/apikey"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {s.apiKeyGet}
+                      </a>
+                    </div>
+                    <input
+                      id="apiKey"
+                      type="password"
+                      className="field-input"
+                      placeholder={s.apiKeyPh}
+                      autoComplete="off"
+                      value={apiKey}
+                      onChange={(e) => {
+                        setApiKey(e.target.value)
+                        setTestState("idle")
+                      }}
+                    />
+                    <p className="field-hint">{s.apiKeyHint}</p>
+                    <div className="byok-soon">
+                      <span className="byok-soon-dot" />
+                      {s.umbraApiSoon}
+                    </div>
+                  </div>
+
                   <div className="field-group">
                     <div className="field-label-row">
                       <label className="field-label" htmlFor="sysPrompt">
@@ -764,7 +810,7 @@ export function RegistroClient({ existingNames }: { existingNames: string[] }) {
                             ? " verified-error"
                             : ""
                     }`}
-                    disabled={testState === "verifying" || !sysPrompt.trim() || !testPrompt.trim()}
+                    disabled={testState === "verifying" || !apiKey.trim() || !sysPrompt.trim() || !testPrompt.trim()}
                     onClick={runTest}
                   >
                     <span>

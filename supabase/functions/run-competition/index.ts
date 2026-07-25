@@ -144,8 +144,9 @@ async function callAgent(endpoint: string, prompt: string): Promise<{ response: 
 
 // ─── Agentes de prompt ────────────────────────────────────────────────────────
 // El creador no despliega nada: escribe un prompt de sistema y Umbra lo ejecuta.
-// Compiten en igualdad de condiciones porque todos corren sobre el mismo modelo:
-// lo único que los distingue es la calidad de su prompt.
+// BYOK: cada agente corre con LA API KEY DE SU DUEÑO (Gemini), así el creador
+// paga su propio consumo de IA, no Umbra. Compiten en igualdad de condiciones
+// (mismo modelo); lo único que los distingue es la calidad de su prompt.
 
 async function runPromptWithGemini(
   apiKey: string,
@@ -171,44 +172,16 @@ async function runPromptWithGemini(
   return text.trim() || null
 }
 
-async function runPromptWithGroq(
-  apiKey: string,
-  systemPrompt: string,
-  prompt: string,
-): Promise<string | null> {
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: AGENT_MAX_TOKENS,
-      temperature: 0.7,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-    }),
-  })
-  if (!res.ok) {
-    console.error("runPromptWithGroq error", res.status, await res.text().catch(() => ""))
-    return null
-  }
-  const data = await res.json()
-  const text: string = data?.choices?.[0]?.message?.content ?? ""
-  return text.trim() || null
-}
-
+// Ejecuta el agente de prompt con la llave de su dueño. Sin llave no puede correr.
 async function runPromptAgent(
+  apiKey: string | null,
   systemPrompt: string,
   prompt: string,
-  geminiKey: string | undefined,
-  groqKey: string | undefined,
 ): Promise<{ response: string | null; ms: number | null }> {
+  if (!apiKey) return { response: null, ms: null }
   const started = Date.now()
   try {
-    let out: string | null = null
-    if (geminiKey) out = await runPromptWithGemini(geminiKey, systemPrompt, prompt)
-    if (!out && groqKey) out = await runPromptWithGroq(groqKey, systemPrompt, prompt)
+    const out = await runPromptWithGemini(apiKey, systemPrompt, prompt)
     return out ? { response: out, ms: Date.now() - started } : { response: null, ms: null }
   } catch (e) {
     console.error("runPromptAgent falló", e)
@@ -444,7 +417,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: entries, error: entriesError } = await supabase
       .from("competition_entries")
-      .select("id, agent_id, agents(id, name, endpoint, system_prompt)")
+      .select("id, agent_id, agents(id, name, endpoint, system_prompt, api_key)")
       .eq("competition_id", competitionId)
 
     if (entriesError || !entries || entries.length === 0) {
@@ -465,7 +438,13 @@ Deno.serve(async (req: Request) => {
     interface EntryWithAgent {
       id: string
       agent_id: string
-      agents: { id: string; name: string; endpoint: string | null; system_prompt: string | null } | null
+      agents: {
+        id: string
+        name: string
+        endpoint: string | null
+        system_prompt: string | null
+        api_key: string | null
+      } | null
     }
     const answers: AgentAnswer[] = await Promise.all(
       (entries as EntryWithAgent[]).map(async (e) => {
@@ -478,13 +457,12 @@ Deno.serve(async (req: Request) => {
           return { ...base, response, responseTimeMs: ms }
         }
 
-        // Agente de prompt: lo ejecuta Umbra.
+        // Agente de prompt: lo ejecuta Umbra con la llave del dueño (BYOK).
         if (agent?.system_prompt) {
           const { response, ms } = await runPromptAgent(
+            agent.api_key,
             agent.system_prompt,
             comp.prompt ?? "",
-            geminiKey,
-            groqKey,
           )
           return { ...base, response, responseTimeMs: ms }
         }

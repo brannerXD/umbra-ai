@@ -1,18 +1,16 @@
 // Prueba un agente de prompt antes de registrarlo.
 //
-// El usuario escribe su prompt de sistema y una pregunta de ejemplo, y ve la
-// respuesta al instante. Es el equivalente al "Verificar endpoint" de los
-// agentes que se despliegan por fuera: sirve para que nadie registre un agente
-// sin haberlo visto funcionar.
+// El usuario escribe su prompt de sistema, PEGA SU PROPIA API KEY de Gemini, y
+// una pregunta de ejemplo, y ve la respuesta al instante. La llave la trae el
+// creador (BYOK): así cada quien paga su propio consumo de IA, no Umbra.
 //
-// Requiere sesión (verify_jwt), porque cada llamada consume modelo.
+// Requiere sesión (verify_jwt), porque coordina una llamada a un modelo.
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
-const GROQ_MODEL = "llama-3.3-70b-versatile"
 const GEMINI_MODEL = "gemini-flash-lite-latest"
 
 const MAX_SYSTEM_PROMPT = 4000
@@ -26,7 +24,10 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-async function conGemini(apiKey: string, systemPrompt: string, prompt: string): Promise<string | null> {
+/** Ejecuta el prompt del creador contra Gemini usando LA LLAVE DEL CREADOR. */
+async function conGemini(apiKey: string, systemPrompt: string, prompt: string): Promise<
+  { ok: true; text: string } | { ok: false; status: number }
+> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
   const res = await fetch(url, {
     method: "POST",
@@ -39,50 +40,25 @@ async function conGemini(apiKey: string, systemPrompt: string, prompt: string): 
   })
   if (!res.ok) {
     console.error("probar-agente/gemini", res.status, await res.text().catch(() => ""))
-    return null
+    return { ok: false, status: res.status }
   }
   const data = await res.json()
   const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
-  return text.trim() || null
-}
-
-async function conGroq(apiKey: string, systemPrompt: string, prompt: string): Promise<string | null> {
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: MAX_TOKENS,
-      temperature: 0.7,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-    }),
-  })
-  if (!res.ok) {
-    console.error("probar-agente/groq", res.status, await res.text().catch(() => ""))
-    return null
-  }
-  const data = await res.json()
-  const text: string = data?.choices?.[0]?.message?.content ?? ""
-  return text.trim() || null
+  return text.trim() ? { ok: true, text: text.trim() } : { ok: false, status: 502 }
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS })
 
-  const geminiKey = Deno.env.get("GEMINI_API_KEY")
-  const groqKey = Deno.env.get("GROQ_API_KEY")
-  if (!geminiKey && !groqKey) {
-    return json({ ok: false, message: "El motor de agentes no está configurado." }, 500)
-  }
-
   try {
     const body = await req.json().catch(() => null)
     const systemPrompt = typeof body?.systemPrompt === "string" ? body.systemPrompt.trim() : ""
     const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : ""
+    const apiKey = typeof body?.apiKey === "string" ? body.apiKey.trim() : ""
 
+    if (!apiKey) {
+      return json({ ok: false, message: "Pega primero tu API key de Gemini." }, 400)
+    }
     if (!systemPrompt) {
       return json({ ok: false, message: "Escribe primero las instrucciones de tu agente." }, 400)
     }
@@ -97,15 +73,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const started = Date.now()
-    let respuesta: string | null = null
-    if (geminiKey) respuesta = await conGemini(geminiKey, systemPrompt, prompt)
-    if (!respuesta && groqKey) respuesta = await conGroq(groqKey, systemPrompt, prompt)
+    const r = await conGemini(apiKey, systemPrompt, prompt)
 
-    if (!respuesta) {
-      return json({ ok: false, message: "El modelo no devolvió respuesta. Intenta de nuevo." }, 502)
+    if (!r.ok) {
+      // 400/403 casi siempre = llave inválida o sin permisos.
+      const msg =
+        r.status === 400 || r.status === 403
+          ? "Tu API key no es válida o no tiene permiso. Revísala e intenta de nuevo."
+          : "El modelo no respondió. Intenta de nuevo en un momento."
+      return json({ ok: false, message: msg }, 502)
     }
 
-    return json({ ok: true, respuesta, ms: Date.now() - started })
+    return json({ ok: true, respuesta: r.text, ms: Date.now() - started })
   } catch (err) {
     console.error("probar-agente falló", err)
     return json({ ok: false, message: "Error interno probando el agente." }, 500)

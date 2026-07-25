@@ -291,6 +291,9 @@ export async function registerAgent(input: {
   //   ninguna       → solo se vende como codigo, no compite.
   endpoint?: string | null
   systemPrompt?: string | null
+  // BYOK: la API key del dueno para ejecutar el prompt (solo agentes de prompt).
+  // Se guarda oculta; el cliente la escribe pero no la puede leer.
+  apiKey?: string | null
   ownerId: string
 }): Promise<Agent | null> {
   const { data, error } = await supabase
@@ -302,6 +305,7 @@ export async function registerAgent(input: {
       category_label: getCategoryLabel(input.category),
       endpoint: input.endpoint ?? null,
       system_prompt: input.systemPrompt ?? null,
+      api_key: input.apiKey ?? null,
       owner_id: input.ownerId,
       verified: true,
     })
@@ -322,9 +326,10 @@ export async function registerAgent(input: {
 export async function probarAgente(
   systemPrompt: string,
   prompt: string,
+  apiKey: string,
 ): Promise<{ ok: boolean; respuesta?: string; ms?: number; message?: string }> {
   const { data, error } = await supabase.functions.invoke("probar-agente", {
-    body: { systemPrompt, prompt },
+    body: { systemPrompt, prompt, apiKey },
   })
   if (error && !data) {
     return { ok: false, message: "No se pudo contactar el motor de agentes." }
