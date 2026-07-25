@@ -543,3 +543,18 @@
     font-size: 1.6rem;
   }
 }
+
+/* Autor del agente ("Hecho por X") en el hero. */
+.agent-madeby {
+  font-size: 13px;
+  color: var(--text-3);
+  margin: 2px 0 0;
+}
+.agent-madeby-link {
+  color: var(--text-2);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--transition);
+}
+.agent-madeby-link:hover { color: var(--text); }

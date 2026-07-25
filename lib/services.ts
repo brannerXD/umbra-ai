@@ -33,6 +33,9 @@ import type {
   PurchaseStatus,
   SellerStats,
   UserProfile,
+  PublicProfile,
+  ProfileSummary,
+  AdminProfile,
 } from "./types"
 
 // ── MAPEOS DB → UI ───────────────────────
@@ -42,6 +45,11 @@ import type {
 // y a nivel de base de datos tambien esta revocado para anon/authenticated.
 const AGENT_COLS =
   "id, name, description, category, category_label, owner_id, verified, archived, score, wins, comps_count, avg_score, last_comp, score_evolution"
+
+// Igual que AGENT_COLS pero con el autor embebido, para mostrar "hecho por" y
+// enlazar a su perfil. Se usa en las consultas de agentes de nivel superior;
+// las anidadas (marketplace, compras) siguen con AGENT_COLS.
+const AGENT_SELECT = `${AGENT_COLS}, creator:profiles!agents_owner_id_fkey(id, username, avatar_url)`
 
 interface AgentRow {
   id: string
@@ -58,6 +66,7 @@ interface AgentRow {
   avg_score: number | string | null
   last_comp: string | null
   score_evolution: number[] | null
+  creator?: { id: string; username: string | null; avatar_url: string | null } | null
 }
 
 function mapAgent(row: AgentRow, history: AgentHistoryEntry[] = []): Agent {
@@ -77,6 +86,9 @@ function mapAgent(row: AgentRow, history: AgentHistoryEntry[] = []): Agent {
     lastComp: row.last_comp ?? "—",
     history,
     scoreEvolution: row.score_evolution ?? [],
+    creator: row.creator
+      ? { id: row.creator.id, username: row.creator.username ?? "Usuario", avatarUrl: row.creator.avatar_url }
+      : null,
   }
 }
 
@@ -175,11 +187,11 @@ async function fetchResultsForCompetition(competitionId: string, status: string)
 export async function listAgents(): Promise<Agent[]> {
   const { data, error } = await supabase
     .from("agents")
-    .select(AGENT_COLS)
+    .select(AGENT_SELECT)
     .eq("archived", false)
     .order("score", { ascending: false })
   if (error || !data) return []
-  return data.map((row) => mapAgent(row as AgentRow))
+  return data.map((row) => mapAgent(row as unknown as AgentRow))
 }
 
 interface HistoryEntryRow {
@@ -238,25 +250,25 @@ export async function getAgentHistory(agentId: string): Promise<AgentHistoryEntr
 }
 
 export async function getAgentById(id: string): Promise<Agent | null> {
-  const { data, error } = await supabase.from("agents").select(AGENT_COLS).eq("id", id).maybeSingle()
+  const { data, error } = await supabase.from("agents").select(AGENT_SELECT).eq("id", id).maybeSingle()
   if (error || !data) return null
   const history = await getAgentHistory(id)
-  return mapAgent(data as AgentRow, history)
+  return mapAgent(data as unknown as AgentRow, history)
 }
 
 export async function getRankedAgents(category: Category | "all" = "all"): Promise<Agent[]> {
-  let query = supabase.from("agents").select(AGENT_COLS).eq("archived", false).order("score", { ascending: false })
+  let query = supabase.from("agents").select(AGENT_SELECT).eq("archived", false).order("score", { ascending: false })
   if (category !== "all") query = query.eq("category", category)
   const { data, error } = await query
   if (error || !data) return []
-  return data.map((row) => mapAgent(row as AgentRow))
+  return data.map((row) => mapAgent(row as unknown as AgentRow))
 }
 
 export async function getAgentsByOwner(ownerId: string | null): Promise<Agent[]> {
   if (!ownerId) return []
-  const { data, error } = await supabase.from("agents").select(AGENT_COLS).eq("owner_id", ownerId)
+  const { data, error } = await supabase.from("agents").select(AGENT_SELECT).eq("owner_id", ownerId)
   if (error || !data) return []
-  return data.map((row) => mapAgent(row as AgentRow))
+  return data.map((row) => mapAgent(row as unknown as AgentRow))
 }
 
 export async function updateAgentDescription(agentId: string, description: string): Promise<boolean> {
@@ -843,17 +855,19 @@ export async function getSellerStats(): Promise<SellerStats | null> {
 
 interface ProfileRow {
   id: string
-  email: string | null
   username: string | null
   avatar_url: string | null
   bio: string | null
   username_updated_at: string
 }
 
+// Columnas públicas de profiles. El email queda fuera a propósito: está revocado
+// a nivel de base y el dueño lo obtiene de su sesión de auth, no de aquí.
+const PROFILE_COLS = "id, username, avatar_url, bio, username_updated_at"
+
 function mapProfile(row: ProfileRow): UserProfile {
   return {
     id: row.id,
-    email: row.email,
     username: row.username ?? "Usuario",
     avatarUrl: row.avatar_url,
     bio: row.bio ?? "",
@@ -862,9 +876,100 @@ function mapProfile(row: ProfileRow): UserProfile {
 }
 
 export async function getUserProfile(id: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle()
+  const { data, error } = await supabase.from("profiles").select(PROFILE_COLS).eq("id", id).maybeSingle()
   if (error || !data) return null
   return mapProfile(data as ProfileRow)
+}
+
+// ── PERFIL PÚBLICO, BÚSQUEDA Y ADMIN ─────
+
+/**
+ * Perfil público de un usuario: lo que ve cualquiera en /u?id=. Sin email.
+ * Incluye sus agentes y unas estadísticas derivadas, más la insignia de
+ * "primer agente" (creó al menos uno).
+ */
+export async function getPublicProfile(id: string): Promise<PublicProfile | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, bio, created_at")
+    .eq("id", id)
+    .maybeSingle()
+  if (error || !data) return null
+
+  const row = data as { id: string; username: string | null; avatar_url: string | null; bio: string | null; created_at: string }
+  const agents = (await getAgentsByOwner(id)).filter((a) => !a.archived)
+
+  const totalScore = agents.reduce((acc, a) => acc + a.score, 0)
+  const wins = agents.reduce((acc, a) => acc + a.wins, 0)
+  const bestScore = agents.reduce((acc, a) => Math.max(acc, a.score), 0)
+
+  return {
+    id: row.id,
+    username: row.username ?? "Usuario",
+    avatarUrl: row.avatar_url,
+    bio: row.bio ?? "",
+    createdAt: new Date(row.created_at),
+    agents,
+    stats: { agents: agents.length, totalScore, wins, bestScore },
+    firstAgent: agents.length > 0,
+  }
+}
+
+/** Busca agentes por nombre (no archivados). Incluye el autor. */
+export async function searchAgents(query: string, limit = 20): Promise<Agent[]> {
+  const q = query.trim()
+  if (!q) return []
+  const { data, error } = await supabase
+    .from("agents")
+    .select(AGENT_SELECT)
+    .eq("archived", false)
+    .ilike("name", `%${q}%`)
+    .order("score", { ascending: false })
+    .limit(limit)
+  if (error || !data) return []
+  return data.map((r) => mapAgent(r as unknown as AgentRow))
+}
+
+/** Busca perfiles por apodo. Devuelve solo datos públicos. */
+export async function searchProfiles(query: string, limit = 20): Promise<ProfileSummary[]> {
+  const q = query.trim()
+  if (!q) return []
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, bio")
+    .ilike("username", `%${q}%`)
+    .limit(limit)
+  if (error || !data) return []
+  return (data as { id: string; username: string | null; avatar_url: string | null; bio: string | null }[]).map((p) => ({
+    id: p.id,
+    username: p.username ?? "Usuario",
+    avatarUrl: p.avatar_url,
+    bio: p.bio ?? "",
+  }))
+}
+
+/** Lista de usuarios para el panel de admin, con cuántos agentes tiene cada uno. */
+export async function listAllProfiles(): Promise<AdminProfile[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, created_at")
+    .order("created_at", { ascending: false })
+  if (error || !data) return []
+
+  // Conteo de agentes por dueño, en una sola consulta.
+  const { data: agentRows } = await supabase.from("agents").select("owner_id").eq("archived", false)
+  const counts = new Map<string, number>()
+  for (const a of (agentRows ?? []) as { owner_id: string | null }[]) {
+    if (a.owner_id) counts.set(a.owner_id, (counts.get(a.owner_id) ?? 0) + 1)
+  }
+
+  return (data as { id: string; username: string | null; avatar_url: string | null; created_at: string }[]).map((p) => ({
+    id: p.id,
+    username: p.username ?? "Usuario",
+    avatarUrl: p.avatar_url,
+    createdAt: new Date(p.created_at),
+    agentsCount: counts.get(p.id) ?? 0,
+  }))
 }
 
 export async function updateProfile(

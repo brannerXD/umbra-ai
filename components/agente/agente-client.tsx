@@ -26,6 +26,7 @@ const T = {
   es: {
     back: "\u2190 Volver al ranking",
     global: "Global",
+    madeBy: "Hecho por",
     statScore: "Score total",
     statWins: "Victorias",
     statComps: "Competencias",
@@ -140,6 +141,7 @@ const T = {
   en: {
     back: "\u2190 Back to ranking",
     global: "Global",
+    madeBy: "Made by",
     statScore: "Total score",
     statWins: "Wins",
     statComps: "Competitions",
@@ -572,6 +574,14 @@ export function AgenteClient({
                 )}
               </div>
               <span className="cat-tag">{getCategoryLabel(initialAgent.category, lang)}</span>
+              {initialAgent.creator && (
+                <p className="agent-madeby">
+                  {s.madeBy}{" "}
+                  <Link href={`/u?id=${initialAgent.creator.id}`} className="agent-madeby-link">
+                    {initialAgent.creator.username}
+                  </Link>
+                </p>
+              )}
               <p className="agent-desc">{description}</p>
             </div>
           </div>

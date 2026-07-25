@@ -427,3 +427,11 @@
   max-width: 46ch;
   line-height: 1.5;
 }
+
+/* Nombre de usuario como enlace al perfil público, en la tabla de actividad. */
+.actividad-nombre-link {
+  color: var(--text);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+.actividad-nombre-link:hover { color: var(--green); text-decoration: underline; }

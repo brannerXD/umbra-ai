@@ -181,3 +181,78 @@
   background: var(--surface-2);
   margin-bottom: 8px;
 }
+
+/* ========================================
+   INSIGNIAS · PERFIL PÚBLICO · AUTOR
+   ======================================== */
+
+.perfil-badges { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+.insignia {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--green) 35%, var(--border));
+  background: var(--green-dim);
+  color: var(--green);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: default;
+}
+.insignia-star { font-size: 11px; line-height: 1; }
+
+/* Avatar de solo lectura en el perfil público (sin botón de cambio). */
+.perfil-avatar-static {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Estadísticas del perfil público. */
+.pub-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.pub-stat {
+  padding: 16px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.pub-stat-num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.pub-stat-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pub-bio {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.pub-agent-score {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .pub-stats { grid-template-columns: repeat(2, 1fr); }
+}

@@ -6,6 +6,10 @@ import { Ticker } from "@/components/home/ticker"
 import { getMarketplaceListings, getRankedAgents, listCompetitions } from "@/lib/services"
 import "./home.css"
 
+// El ranking y las competencias activas cambian constantemente. force-dynamic evita
+// que Next.js congele esta página como estática y muestre datos viejos.
+export const dynamic = "force-dynamic"
+
 export default async function HomePage() {
   const [allAgents, competitions, listings] = await Promise.all([
     getRankedAgents(),

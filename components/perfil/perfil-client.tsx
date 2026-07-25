@@ -58,6 +58,8 @@ const T = {
     okBio: "Descripción actualizada.",
     errArchive: "No se pudo archivar el agente.",
     okArchive: (n: string) => `${n} fue archivado.`,
+    badgeFirst: "Primer Agente",
+    badgeFirstDesc: "Creaste tu primer agente en Umbra",
     dateLocale: "es-CO",
   },
   en: {
@@ -94,6 +96,8 @@ const T = {
     okBio: "Bio updated.",
     errArchive: "Could not archive the agent.",
     okArchive: (n: string) => `${n} was archived.`,
+    badgeFirst: "First Agent",
+    badgeFirstDesc: "You created your first agent on Umbra",
     dateLocale: "en-US",
   },
 } as const
@@ -236,7 +240,15 @@ export function PerfilClient() {
           </button>
           <div>
             <h1 className="perfil-name">{profile.username}</h1>
-            <p className="perfil-email">{profile.email}</p>
+            <p className="perfil-email">{user.email}</p>
+            {agents.length > 0 && (
+              <div className="perfil-badges">
+                <span className="insignia" title={s.badgeFirstDesc}>
+                  <span className="insignia-star">★</span>
+                  {s.badgeFirst}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </section>
