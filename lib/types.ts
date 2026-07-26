@@ -86,6 +86,8 @@ export interface Competition {
   agentsEnrolled: number
   startedAt: Date
   endsAt: Date
+  /** Hora de inicio automático programada por un admin. null = manual. */
+  scheduledAt: Date | null
   winnerId: string | null
   winnerName: string | null
   winnerScore: number | null

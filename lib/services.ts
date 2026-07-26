@@ -110,6 +110,7 @@ interface CompetitionRow {
   agents_enrolled: number | null
   started_at: string | null
   ends_at: string | null
+  scheduled_at: string | null
   winner_id: string | null
   winner_score: number | null
   agents?: { name: string } | null
@@ -127,6 +128,7 @@ function mapCompetition(row: CompetitionRow, results: CompetitionResult[] = []):
     agentsEnrolled: row.agents_enrolled ?? 0,
     startedAt: new Date(row.started_at ?? Date.now()),
     endsAt: new Date(row.ends_at ?? Date.now()),
+    scheduledAt: row.scheduled_at ? new Date(row.scheduled_at) : null,
     winnerId: row.winner_id,
     winnerName: row.agents?.name ?? null,
     winnerScore: row.winner_score,
@@ -543,6 +545,8 @@ export async function createCompetition(input: {
   category: Category
   prompt: string
   agentsMax: number
+  /** Hora ISO de inicio automático (opcional). Si se pasa, el cron la arranca sola. */
+  scheduledAt?: string | null
 }): Promise<string | null> {
   const { data, error } = await supabase.rpc("create_competition", {
     p_title: input.title,
@@ -550,6 +554,7 @@ export async function createCompetition(input: {
     p_category_label: getCategoryLabel(input.category),
     p_prompt: input.prompt,
     p_agents_max: input.agentsMax,
+    p_scheduled_at: input.scheduledAt ?? null,
   })
   if (error) {
     console.error("createCompetition failed", error)
