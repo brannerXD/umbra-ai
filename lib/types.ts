@@ -3,6 +3,8 @@
 // ========================================
 
 export type Category = "texto" | "codigo" | "prediccion" | "razonamiento" | "otro"
+/** De qué tipo es un agente, derivado de cómo se creó (columna generada en DB). */
+export type AgentKind = "endpoint" | "prompt" | "codigo"
 export type CompetitionStatus = "en-curso" | "proxima" | "completada"
 export type HistoryResult = "win" | "other"
 
@@ -26,6 +28,12 @@ export interface Agent {
   ownerId: string | null
   verified: boolean
   archived: boolean
+  /** Cómo se creó: endpoint (servidor propio), prompt (BYOK) o código. */
+  kind: AgentKind
+  /** Última vez que se cambió el nombre (cooldown de 90 días). null = nunca. */
+  nameUpdatedAt: Date | null
+  /** Última vez que se editó el prompt (cooldown de 6 horas). null = nunca. */
+  promptUpdatedAt: Date | null
   score: number
   wins: number
   comps: number

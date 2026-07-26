@@ -44,7 +44,7 @@ import type {
 // queda deliberadamente fuera: es el activo que protege la licencia por URL,
 // y a nivel de base de datos tambien esta revocado para anon/authenticated.
 const AGENT_COLS =
-  "id, name, description, category, category_label, owner_id, verified, archived, score, wins, comps_count, avg_score, last_comp, score_evolution"
+  "id, name, description, category, category_label, owner_id, verified, archived, kind, name_updated_at, prompt_updated_at, score, wins, comps_count, avg_score, last_comp, score_evolution"
 
 // Igual que AGENT_COLS pero con el autor embebido, para mostrar "hecho por" y
 // enlazar a su perfil. Se usa en las consultas de agentes de nivel superior;
@@ -60,6 +60,9 @@ interface AgentRow {
   owner_id: string | null
   verified: boolean | null
   archived: boolean | null
+  kind: string | null
+  name_updated_at: string | null
+  prompt_updated_at: string | null
   score: number | null
   wins: number | null
   comps_count: number | null
@@ -79,6 +82,9 @@ function mapAgent(row: AgentRow, history: AgentHistoryEntry[] = []): Agent {
     ownerId: row.owner_id,
     verified: row.verified ?? false,
     archived: row.archived ?? false,
+    kind: (row.kind as Agent["kind"]) ?? "codigo",
+    nameUpdatedAt: row.name_updated_at ? new Date(row.name_updated_at) : null,
+    promptUpdatedAt: row.prompt_updated_at ? new Date(row.prompt_updated_at) : null,
     score: row.score ?? 0,
     wins: row.wins ?? 0,
     comps: row.comps_count ?? 0,
@@ -281,6 +287,11 @@ export async function archiveAgent(agentId: string): Promise<boolean> {
   return !error
 }
 
+export async function unarchiveAgent(agentId: string): Promise<boolean> {
+  const { error } = await supabase.from("agents").update({ archived: false }).eq("id", agentId)
+  return !error
+}
+
 export async function registerAgent(input: {
   name: string
   description: string
@@ -348,6 +359,68 @@ export async function getMyAgentPrompt(agentId: string): Promise<string | null> 
   const { data, error } = await supabase.rpc("my_agent_prompt", { p_agent_id: agentId })
   if (error) return null
   return (data as string | null) ?? null
+}
+
+/**
+ * Cambia el nombre de un agente propio (máx. una vez cada 90 días). Pasa por
+ * una RPC SECURITY DEFINER que valida la propiedad y el cooldown; el cliente
+ * ya no puede escribir la columna `name` directamente.
+ * Devuelve la nueva marca de tiempo para refrescar el cooldown, o un mensaje.
+ */
+export async function updateMyAgentName(
+  agentId: string,
+  name: string,
+): Promise<{ ok: true; at: Date } | { ok: false; message: string }> {
+  const { data, error } = await supabase.rpc("update_my_agent_name", {
+    p_agent_id: agentId,
+    p_name: name,
+  })
+  if (error) {
+    if (error.message.includes("cada 90 dias")) {
+      return { ok: false, message: "Solo puedes cambiar el nombre cada 90 días." }
+    }
+    if (error.message.includes("entre 2 y 60")) {
+      return { ok: false, message: "El nombre debe tener entre 2 y 60 caracteres." }
+    }
+    if (error.message.includes("No autorizado")) {
+      return { ok: false, message: "No autorizado." }
+    }
+    return { ok: false, message: "No se pudo cambiar el nombre." }
+  }
+  return { ok: true, at: new Date((data as string) ?? Date.now()) }
+}
+
+/**
+ * Edita el prompt de un agente de prompt propio (máx. una vez cada 6 horas).
+ * RPC SECURITY DEFINER: valida propiedad, cooldown y que sea de tipo prompt.
+ */
+export async function updateMyAgentPrompt(
+  agentId: string,
+  prompt: string,
+): Promise<{ ok: true; at: Date } | { ok: false; message: string }> {
+  const { data, error } = await supabase.rpc("update_my_agent_prompt", {
+    p_agent_id: agentId,
+    p_prompt: prompt,
+  })
+  if (error) {
+    if (error.message.includes("cada 6 horas")) {
+      return { ok: false, message: "Solo puedes editar el prompt cada 6 horas." }
+    }
+    if (error.message.includes("no es de tipo prompt")) {
+      return { ok: false, message: "Este agente no es de tipo prompt." }
+    }
+    if (error.message.includes("demasiado corto")) {
+      return { ok: false, message: "El prompt es demasiado corto." }
+    }
+    if (error.message.includes("4000")) {
+      return { ok: false, message: "El prompt no puede pasar de 4000 caracteres." }
+    }
+    if (error.message.includes("No autorizado")) {
+      return { ok: false, message: "No autorizado." }
+    }
+    return { ok: false, message: "No se pudo editar el prompt." }
+  }
+  return { ok: true, at: new Date((data as string) ?? Date.now()) }
 }
 
 // ── COMPETENCIAS ─────────────────────────

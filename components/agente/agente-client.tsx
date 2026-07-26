@@ -8,18 +8,26 @@ import { ScoreChart } from "./score-chart"
 import { useAuth } from "@/components/auth-provider"
 import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
+import { useNow } from "@/hooks/use-now"
 import { formatListingPrice, formatTime, getBillingLabel, getCategoryLabel } from "@/lib/umbra"
 import {
   MIN_COMPS_FOR_CERTIFICATE,
   archiveAgent,
   createAgentVersion,
   createListing,
+  getMyAgentPrompt,
+  unarchiveAgent,
   updateAgentDescription,
+  updateMyAgentName,
+  updateMyAgentPrompt,
   uploadAgentCode,
   uploadAgentImage,
 } from "@/lib/services"
 import { CODE_LICENSES } from "@/lib/types"
-import type { Agent, BillingModel, ListingType, MarketplaceListingWithAgent } from "@/lib/types"
+import type { Agent, AgentKind, BillingModel, ListingType, MarketplaceListingWithAgent } from "@/lib/types"
+
+const NAME_COOLDOWN_DAYS = 90
+const PROMPT_COOLDOWN_HOURS = 6
 
 // Textos de la pagina en ambos idiomas.
 const T = {
@@ -43,6 +51,26 @@ const T = {
     ownerBadge: "Este es tu agente",
     endpointLabel: "Endpoint actual:",
     editDesc: "Editar descripción",
+    editAgent: "Editar agente",
+    unarchive: "Desarchivar",
+    kindLabel: { prompt: "Prompt", endpoint: "Endpoint", codigo: "Código" } as Record<AgentKind, string>,
+    editAgentTitle: "Editar agente",
+    editAgentSub: "Cambia el nombre, la descripción y —si es de prompt— sus instrucciones.",
+    nameLabel: "Nombre",
+    nameCooldownOk: "Puedes cambiar el nombre. Después de guardarlo, esperarás 90 días para volver a cambiarlo.",
+    nameCooldownWait: (d: string) => `Podrás cambiar el nombre de nuevo el ${d}.`,
+    promptLabel: "Instrucciones del agente (prompt)",
+    promptLoading: "Cargando prompt...",
+    promptCooldownOk: "Puedes editar el prompt. Después de guardarlo, esperarás 6 horas para volver a editarlo.",
+    promptCooldownWait: (d: string) => `Podrás editar el prompt de nuevo el ${d}.`,
+    saveName: "Guardar nombre",
+    savePrompt: "Guardar prompt",
+    okName: "Nombre actualizado.",
+    okPrompt: "Prompt actualizado.",
+    okUnarchive: (n: string) => `${n} fue desarchivado.`,
+    errUnarchive: "No se pudo desarchivar el agente.",
+    unarchiving: "Desarchivando...",
+    dateLocale: "es-CO",
     listMarket: "Listar en marketplace",
     newVersion: "Publicar nueva versión",
     archiveAgent: "Archivar agente",
@@ -158,6 +186,26 @@ const T = {
     ownerBadge: "This is your agent",
     endpointLabel: "Current endpoint:",
     editDesc: "Edit description",
+    editAgent: "Edit agent",
+    unarchive: "Unarchive",
+    kindLabel: { prompt: "Prompt", endpoint: "Endpoint", codigo: "Code" } as Record<AgentKind, string>,
+    editAgentTitle: "Edit agent",
+    editAgentSub: "Change the name, the description and —if it is a prompt agent— its instructions.",
+    nameLabel: "Name",
+    nameCooldownOk: "You can change the name. After saving it, you will wait 90 days to change it again.",
+    nameCooldownWait: (d: string) => `You can change the name again on ${d}.`,
+    promptLabel: "Agent instructions (prompt)",
+    promptLoading: "Loading prompt...",
+    promptCooldownOk: "You can edit the prompt. After saving it, you will wait 6 hours to edit it again.",
+    promptCooldownWait: (d: string) => `You can edit the prompt again on ${d}.`,
+    saveName: "Save name",
+    savePrompt: "Save prompt",
+    okName: "Name updated.",
+    okPrompt: "Prompt updated.",
+    okUnarchive: (n: string) => `${n} was unarchived.`,
+    errUnarchive: "The agent could not be unarchived.",
+    unarchiving: "Unarchiving...",
+    dateLocale: "en-US",
     listMarket: "List on marketplace",
     newVersion: "Publish new version",
     archiveAgent: "Archive agent",
@@ -288,16 +336,24 @@ export function AgenteClient({
   const { lang } = useI18n()
   const s = T[lang]
 
+  const [name, setName] = useState(initialAgent.name)
   const [description, setDescription] = useState(initialAgent.description)
+  const [archived, setArchived] = useState(initialAgent.archived)
+  const [nameUpdatedAt, setNameUpdatedAt] = useState<Date | null>(initialAgent.nameUpdatedAt)
+  const [promptUpdatedAt, setPromptUpdatedAt] = useState<Date | null>(initialAgent.promptUpdatedAt)
   const [listing, setListing] = useState<MarketplaceListingWithAgent | null>(initialListing)
   const [histFilter, setHistFilter] = useState<HistFilter>("all")
   const [showAll, setShowAll] = useState(false)
+  const now = useNow(60000)
 
   // Modales
   const [editOpen, setEditOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [nameDraft, setNameDraft] = useState(name)
   const [descDraft, setDescDraft] = useState(description)
+  const [promptDraft, setPromptDraft] = useState("")
+  const [promptLoading, setPromptLoading] = useState(false)
   const [priceDraft, setPriceDraft] = useState("")
   const [priceUnit, setPriceUnit] = useState<"USD" | "COP">("USD")
   const [listingTypeDraft, setListingTypeDraft] = useState<ListingType>("acceso")
@@ -325,9 +381,24 @@ export function AgenteClient({
   const verInputRef = useRef<HTMLInputElement>(null)
   const [publishingVer, setPublishingVer] = useState(false)
   const [savingDesc, setSavingDesc] = useState(false)
+  const [savingName, setSavingName] = useState(false)
+  const [savingPrompt, setSavingPrompt] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [unarchiving, setUnarchiving] = useState(false)
 
   const isOwner = !!user && initialAgent.ownerId === user.id
+  const isPromptAgent = initialAgent.kind === "prompt"
+
+  // Cooldowns: null = nunca editado = se puede ya.
+  const nowMs = now ?? Date.now()
+  const nameNextDate = nameUpdatedAt
+    ? new Date(nameUpdatedAt.getTime() + NAME_COOLDOWN_DAYS * 24 * 60 * 60 * 1000)
+    : null
+  const canChangeName = !nameNextDate || nowMs >= nameNextDate.getTime()
+  const promptNextDate = promptUpdatedAt
+    ? new Date(promptUpdatedAt.getTime() + PROMPT_COOLDOWN_HOURS * 60 * 60 * 1000)
+    : null
+  const canChangePrompt = !promptNextDate || nowMs >= promptNextDate.getTime()
 
   // Al venir del registro con "vender el código", abrimos el modal ya configurado.
   const autoOpened = useRef(false)
@@ -360,6 +431,36 @@ export function AgenteClient({
 
   const toShow = showAll ? filtered : filtered.slice(0, HIST_LIMIT)
 
+  // Abre el editor completo. Para agentes de prompt, carga el prompt actual
+  // (la columna está oculta al cliente; llega por RPC que valida propiedad).
+  async function openEditor() {
+    setNameDraft(name)
+    setDescDraft(description)
+    setPromptDraft("")
+    setEditOpen(true)
+    if (isPromptAgent) {
+      setPromptLoading(true)
+      const p = await getMyAgentPrompt(initialAgent.id)
+      setPromptDraft(p ?? "")
+      setPromptLoading(false)
+    }
+  }
+
+  async function saveName() {
+    const value = nameDraft.trim()
+    if (!value || value === name) return
+    setSavingName(true)
+    const res = await updateMyAgentName(initialAgent.id, value)
+    setSavingName(false)
+    if (!res.ok) {
+      showToast(res.message, "warn")
+      return
+    }
+    setName(value)
+    setNameUpdatedAt(res.at)
+    showToast(s.okName, "success")
+  }
+
   async function saveDescription() {
     setSavingDesc(true)
     const ok = await updateAgentDescription(initialAgent.id, descDraft)
@@ -369,8 +470,34 @@ export function AgenteClient({
       return
     }
     setDescription(descDraft)
-    setEditOpen(false)
     showToast(s.okSaveDesc, "success")
+  }
+
+  async function savePrompt() {
+    const value = promptDraft.trim()
+    if (!value) return
+    setSavingPrompt(true)
+    const res = await updateMyAgentPrompt(initialAgent.id, value)
+    setSavingPrompt(false)
+    if (!res.ok) {
+      showToast(res.message, "warn")
+      return
+    }
+    setPromptUpdatedAt(res.at)
+    showToast(s.okPrompt, "success")
+  }
+
+  async function confirmUnarchive() {
+    setUnarchiving(true)
+    const ok = await unarchiveAgent(initialAgent.id)
+    setUnarchiving(false)
+    if (!ok) {
+      showToast(s.errUnarchive, "warn")
+      return
+    }
+    setArchived(false)
+    showToast(s.okUnarchive(name), "success")
+    router.refresh()
   }
 
   async function publishListing() {
@@ -545,7 +672,8 @@ export function AgenteClient({
       showToast(s.errArchive, "warn")
       return
     }
-    showToast(s.okArchive(initialAgent.name), "success")
+    setArchived(true)
+    showToast(s.okArchive(name), "success")
     setArchiveOpen(false)
     router.refresh()
   }
@@ -564,16 +692,21 @@ export function AgenteClient({
         <div className="container">
           <div className="agent-hero-inner">
             <div className="agent-avatar-wrap">
-              <div className="agent-avatar-lg">{initialAgent.name.slice(0, 2).toUpperCase()}</div>
+              <div className="agent-avatar-lg">{name.slice(0, 2).toUpperCase()}</div>
             </div>
             <div className="agent-info">
               <div className="agent-top-row">
-                <h1 className="agent-name">{initialAgent.name}</h1>
+                <h1 className="agent-name">{name}</h1>
                 {rankPosition > 0 && (
                   <span className="agent-rank-badge">{`#${rankPosition} ${s.global}`}</span>
                 )}
               </div>
-              <span className="cat-tag">{getCategoryLabel(initialAgent.category, lang)}</span>
+              <div className="agent-tag-row">
+                <span className="cat-tag">{getCategoryLabel(initialAgent.category, lang)}</span>
+                <span className={`kind-tag kind-tag-${initialAgent.kind}`}>
+                  {s.kindLabel[initialAgent.kind]}
+                </span>
+              </div>
               {initialAgent.creator && (
                 <p className="agent-madeby">
                   {s.madeBy}{" "}
@@ -682,18 +815,14 @@ export function AgenteClient({
           <div className="container">
             <div className="owner-box">
               <span className="owner-badge">{s.ownerBadge}</span>
-              <div className="owner-endpoint">
-                <span className="owner-label">{s.endpointLabel}</span>
-                <span className="owner-endpoint-val">●●●●●●●●●●●●●●</span>
-              </div>
-              <button
-                className="btn-ghost btn-sm"
-                onClick={() => {
-                  setDescDraft(description)
-                  setEditOpen(true)
-                }}
-              >
-                {s.editDesc}
+              {initialAgent.kind === "endpoint" && (
+                <div className="owner-endpoint">
+                  <span className="owner-label">{s.endpointLabel}</span>
+                  <span className="owner-endpoint-val">●●●●●●●●●●●●●●</span>
+                </div>
+              )}
+              <button className="btn-ghost btn-sm" onClick={openEditor}>
+                {s.editAgent}
               </button>
               {!listing && (
                 <button
@@ -711,7 +840,11 @@ export function AgenteClient({
                   {s.newVersion}
                 </button>
               )}
-              {!initialAgent.archived && (
+              {archived ? (
+                <button className="btn-ghost btn-sm" disabled={unarchiving} onClick={confirmUnarchive}>
+                  {unarchiving ? s.unarchiving : s.unarchive}
+                </button>
+              ) : (
                 <button className="btn-ghost btn-sm" onClick={() => setArchiveOpen(true)}>
                   {s.archiveAgent}
                 </button>
@@ -799,30 +932,100 @@ export function AgenteClient({
         </div>
       </section>
 
-      {/* Modal editar descripcion */}
+      {/* Modal editar agente (nombre, descripción, prompt) */}
       {editOpen && (
         <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setEditOpen(false)}>
-          <div className="modal-box">
+          <div className="modal-box sell-modal">
             <button className="modal-close" aria-label={s.close} onClick={() => setEditOpen(false)}>
               ✕
             </button>
-            <h3 className="modal-title">{s.editDescTitle}</h3>
-            <p className="modal-sub">{s.editDescSub}</p>
-            <textarea
-              className="modal-textarea"
-              maxLength={100}
-              rows={3}
-              value={descDraft}
-              onChange={(e) => setDescDraft(e.target.value)}
-              placeholder={s.descPlaceholder}
-            />
-            <div className="modal-char-count">{`${descDraft.length}/100`}</div>
+            <h3 className="modal-title">{s.editAgentTitle}</h3>
+            <p className="modal-sub">{s.editAgentSub}</p>
+
+            <div className="sell-modal-body">
+              {/* Nombre (cada 90 días) */}
+              <div className="field-group">
+                <label className="field-label">{s.nameLabel}</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="field-input"
+                    maxLength={60}
+                    disabled={!canChangeName}
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                  />
+                  <button
+                    className="btn-primary btn-sm"
+                    disabled={!canChangeName || savingName || !nameDraft.trim() || nameDraft.trim() === name}
+                    onClick={saveName}
+                  >
+                    <span>{savingName ? "..." : s.saveName}</span>
+                  </button>
+                </div>
+                <p className="field-hint">
+                  {canChangeName
+                    ? s.nameCooldownOk
+                    : s.nameCooldownWait(nameNextDate!.toLocaleDateString(s.dateLocale))}
+                </p>
+              </div>
+
+              {/* Descripción */}
+              <div className="field-group">
+                <label className="field-label">{s.editDescTitle}</label>
+                <textarea
+                  className="field-input sell-textarea"
+                  maxLength={100}
+                  rows={3}
+                  value={descDraft}
+                  onChange={(e) => setDescDraft(e.target.value)}
+                  placeholder={s.descPlaceholder}
+                />
+                <div className="perfil-bio-actions">
+                  <span className="char-counter">{`${descDraft.length}/100`}</span>
+                  <button
+                    className="btn-ghost btn-sm"
+                    disabled={savingDesc || descDraft === description}
+                    onClick={saveDescription}
+                  >
+                    <span>{savingDesc ? s.saving : s.saveChanges}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Prompt (solo agentes de prompt, cada 6 horas) */}
+              {isPromptAgent && (
+                <div className="field-group">
+                  <label className="field-label">{s.promptLabel}</label>
+                  <textarea
+                    className="field-input sell-textarea"
+                    maxLength={4000}
+                    rows={6}
+                    disabled={!canChangePrompt || promptLoading}
+                    value={promptLoading ? s.promptLoading : promptDraft}
+                    onChange={(e) => setPromptDraft(e.target.value)}
+                  />
+                  <div className="perfil-bio-actions">
+                    <span className="char-counter">{`${promptDraft.length}/4000`}</span>
+                    <button
+                      className="btn-ghost btn-sm"
+                      disabled={!canChangePrompt || savingPrompt || promptLoading || !promptDraft.trim()}
+                      onClick={savePrompt}
+                    >
+                      <span>{savingPrompt ? s.saving : s.savePrompt}</span>
+                    </button>
+                  </div>
+                  <p className="field-hint">
+                    {canChangePrompt
+                      ? s.promptCooldownOk
+                      : s.promptCooldownWait(promptNextDate!.toLocaleString(s.dateLocale))}
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="modal-actions">
               <button className="btn-ghost" onClick={() => setEditOpen(false)}>
-                {s.cancel}
-              </button>
-              <button className="btn-primary" disabled={savingDesc} onClick={saveDescription}>
-                <span>{savingDesc ? s.saving : s.saveChanges}</span>
+                {s.close}
               </button>
             </div>
           </div>
