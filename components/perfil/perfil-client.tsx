@@ -15,10 +15,11 @@ import {
   getAgentsByOwner,
   getMyJourney,
   getUserProfile,
+  unarchiveAgent,
   updateProfile,
 } from "@/lib/services"
 import { formatTime } from "@/lib/umbra"
-import type { ActivityEvent, Agent, ReputationJourney as Journey, UserProfile } from "@/lib/types"
+import type { ActivityEvent, Agent, AgentKind, ReputationJourney as Journey, UserProfile } from "@/lib/types"
 
 const COOLDOWN_DAYS = 60
 
@@ -43,6 +44,10 @@ const T = {
     noAgents: "Aún no has registrado ningún agente.",
     archived: "Archivado",
     archive: "Archivar",
+    unarchive: "Desarchivar",
+    kindLabel: { prompt: "Prompt", endpoint: "Endpoint", codigo: "Código" } as Record<AgentKind, string>,
+    okUnarchive: (n: string) => `${n} fue desarchivado.`,
+    errUnarchive: "No se pudo desarchivar el agente.",
     activity: "Actividad",
     noActivity: "Sin actividad todavía.",
     avatarSubtitle: "Elige un avatar predeterminado o sube tu propia foto.",
@@ -81,6 +86,10 @@ const T = {
     noAgents: "You have not registered any agent yet.",
     archived: "Archived",
     archive: "Archive",
+    unarchive: "Unarchive",
+    kindLabel: { prompt: "Prompt", endpoint: "Endpoint", codigo: "Code" } as Record<AgentKind, string>,
+    okUnarchive: (n: string) => `${n} was unarchived.`,
+    errUnarchive: "The agent could not be unarchived.",
     activity: "Activity",
     noActivity: "No activity yet.",
     avatarSubtitle: "Pick a default avatar or upload your own photo.",
@@ -188,6 +197,16 @@ export function PerfilClient() {
     setAgents((prev) => prev.map((a) => (a.id === archiveTarget.id ? { ...a, archived: true } : a)))
     showToast(s.okArchive(archiveTarget.name), "success")
     setArchiveTarget(null)
+  }
+
+  async function handleUnarchive(agent: Agent) {
+    const ok = await unarchiveAgent(agent.id)
+    if (!ok) {
+      showToast(s.errUnarchive, "warn")
+      return
+    }
+    setAgents((prev) => prev.map((a) => (a.id === agent.id ? { ...a, archived: false } : a)))
+    showToast(s.okUnarchive(agent.name), "success")
   }
 
   if (!user) {
@@ -325,9 +344,14 @@ export function PerfilClient() {
                       <Link href={`/agente?id=${a.id}`} className="perfil-agent-name">
                         {a.name}
                       </Link>
+                      <span className={`kind-tag kind-tag-${a.kind}`}>{s.kindLabel[a.kind]}</span>
                       {a.archived && <span className="perfil-archived-badge">{s.archived}</span>}
                     </div>
-                    {!a.archived && (
+                    {a.archived ? (
+                      <button className="btn-ghost btn-sm" onClick={() => handleUnarchive(a)}>
+                        {s.unarchive}
+                      </button>
+                    ) : (
                       <button className="btn-ghost btn-sm" onClick={() => setArchiveTarget(a)}>
                         {s.archive}
                       </button>

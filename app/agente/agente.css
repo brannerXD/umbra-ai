@@ -558,3 +558,12 @@
   transition: color var(--transition);
 }
 .agent-madeby-link:hover { color: var(--text); }
+
+/* Fila de etiquetas del hero (categoría + tipo de agente) */
+.agent-tag-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+

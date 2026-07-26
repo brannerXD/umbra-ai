@@ -922,6 +922,33 @@ a.btn-primary:active,
   border: 1px solid var(--border);
 }
 
+/* Insignia del tipo de agente: prompt / endpoint / código. Compartida por
+   la ficha del agente y la lista "Mis agentes" del perfil. */
+.kind-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 4px 11px;
+  border-radius: 100px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.kind-tag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.kind-tag-prompt { color: #7c5cff; border-color: rgba(124, 92, 255, 0.35); }
+.kind-tag-endpoint { color: #2ea6ff; border-color: rgba(46, 166, 255, 0.35); }
+.kind-tag-codigo { color: #f5a524; border-color: rgba(245, 165, 36, 0.35); }
+
 /* SECTION HEADERS */
 .section-header {
   display: flex;
