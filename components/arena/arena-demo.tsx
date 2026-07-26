@@ -330,6 +330,7 @@ function buildDemoComp(tick: number, startedAt: Date, endsAt: Date, lang: Lang):
     agentsEnrolled: 6,
     startedAt,
     endsAt,
+    scheduledAt: null,
     winnerId: isOver ? WINNER_ID : null,
     winnerName: isOver ? "NeuralX" : null,
     winnerScore: isOver ? WINNER_SCORE : null,

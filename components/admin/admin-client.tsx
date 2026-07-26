@@ -133,6 +133,7 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
   const [category, setCategory] = useState<Category>("texto")
   const [prompt, setPrompt] = useState("")
   const [agentsMax, setAgentsMax] = useState(6)
+  const [scheduledAt, setScheduledAt] = useState("")
   const [creating, setCreating] = useState(false)
   const [runningId, setRunningId] = useState<string | null>(null)
 
@@ -210,16 +211,26 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
       return
     }
     setCreating(true)
-    const id = await createCompetition({ title: title.trim(), category, prompt: prompt.trim(), agentsMax })
+    const id = await createCompetition({
+      title: title.trim(),
+      category,
+      prompt: prompt.trim(),
+      agentsMax,
+      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+    })
     setCreating(false)
     if (!id) {
       showToast("No se pudo publicar la competencia.", "warn")
       return
     }
-    showToast("Competencia publicada.", "success")
+    showToast(
+      scheduledAt ? "Competencia publicada. Iniciará automáticamente a la hora programada." : "Competencia publicada.",
+      "success",
+    )
     setTitle("")
     setPrompt("")
     setAgentsMax(6)
+    setScheduledAt("")
     setCategory("texto")
     router.refresh()
   }
@@ -594,6 +605,20 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
                 />
               </label>
             </div>
+
+            <label className="admin-field">
+              <span>Programar inicio automático (opcional)</span>
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
+              <span className="admin-hint">
+                {scheduledAt
+                  ? "Arrancará sola a esa hora (revisado cada minuto). Déjalo vacío para iniciarla tú a mano."
+                  : "Vacío = la inicias tú a mano. Con fecha/hora = arranca sola."}
+              </span>
+            </label>
 
             <label className="admin-field">
               <span>Prompt de la prueba</span>

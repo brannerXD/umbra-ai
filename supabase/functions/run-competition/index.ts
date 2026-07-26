@@ -12,7 +12,7 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 }
 
 const AGENT_TIMEOUT_MS = 10000
@@ -375,6 +375,43 @@ Deno.serve(async (req: Request) => {
   const groqKey = Deno.env.get("GROQ_API_KEY")
 
   const supabase = createClient(supabaseUrl, serviceRoleKey)
+
+  // ── Autorización ──────────────────────────────────────────────────────────
+  // Correr una competencia gasta el juez de IA (llaves de Umbra), consume las
+  // llaves BYOK de los participantes y reescribe puntajes/ganador. Solo se
+  // permite a dos llamadores de confianza:
+  //   (a) el CRON interno, que trae el secreto que generó la propia base, o
+  //   (b) un ADMIN (su navegador envía la sesión en Authorization al invocar).
+  // Cualquier otro (anónimo, usuario normal) queda fuera.
+  let autorizado = false
+
+  const cronSecret = req.headers.get("x-cron-secret")
+  if (cronSecret) {
+    const { data: match } = await supabase.rpc("cron_secret_matches", { p_secret: cronSecret })
+    if (match === true) autorizado = true
+  }
+
+  if (!autorizado) {
+    const authHeader = req.headers.get("Authorization") ?? ""
+    const token = authHeader.replace(/^[Bb]earer\s+/, "").trim()
+    const { data: userData } = await supabase.auth.getUser(token)
+    const uid = userData?.user?.id
+    if (uid) {
+      const { data: perfil } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", uid)
+        .maybeSingle()
+      if (perfil?.is_admin) autorizado = true
+    }
+  }
+
+  if (!autorizado) {
+    return new Response(
+      JSON.stringify({ ok: false, message: "No autorizado: solo un administrador o el programador pueden ejecutar competencias." }),
+      { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+    )
+  }
 
   try {
     const { competitionId } = await req.json()
