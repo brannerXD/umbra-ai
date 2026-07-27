@@ -4,8 +4,8 @@ import { useI18n } from "@/components/language-provider"
 import { useNow } from "@/hooks/use-now"
 import {
   formatCountdown,
+  formatStartAt,
   formatTime,
-  formatTimeUntil,
   getCategoryLabel,
   getStatusClass,
   getStatusLabel,
@@ -67,7 +67,7 @@ export function DetalleHeader({ comp, onEnrollClick }: { comp: Competition; onEn
           )}
           {comp.status === "proxima" && (
             <span className="comp-timer">
-              {s.opensIn} {formatTimeUntil(comp.startedAt, lang)}
+              {formatStartAt(comp.scheduledAt, lang)}
             </span>
           )}
           {comp.status === "completada" && (
