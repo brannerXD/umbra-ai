@@ -40,6 +40,8 @@ const T = {
     statComps: "Competencias",
     statAvg: "Promedio /100",
     issueCert: "Emitir certificado de reputación \u2192",
+    certReq: (faltan: number) =>
+      `Certificado: te ${faltan === 1 ? "falta" : "faltan"} ${faltan} competencia${faltan === 1 ? "" : "s"}`,
     breakdown: "Desglose del Score",
     bdWins: "Victorias",
     bdSecond: "Segundos puestos",
@@ -175,6 +177,8 @@ const T = {
     statComps: "Competitions",
     statAvg: "Average /100",
     issueCert: "Issue reputation certificate \u2192",
+    certReq: (faltan: number) =>
+      `Certificate: ${faltan} more competition${faltan === 1 ? "" : "s"} needed`,
     breakdown: "Score breakdown",
     bdWins: "Wins",
     bdSecond: "Second places",
@@ -747,11 +751,17 @@ export function AgenteClient({
               <span className="stat-card-label">{s.statAvg}</span>
             </div>
           </div>
-          {isOwner && initialAgent.comps >= MIN_COMPS_FOR_CERTIFICATE && (
+          {isOwner && (
             <div className="cert-link-row">
-              <Link href={`/certificado?id=${initialAgent.id}`} className="btn-ghost btn-sm">
-                {s.issueCert}
-              </Link>
+              {initialAgent.comps >= MIN_COMPS_FOR_CERTIFICATE ? (
+                <Link href={`/certificado?id=${initialAgent.id}`} className="btn-ghost btn-sm">
+                  {s.issueCert}
+                </Link>
+              ) : (
+                <button type="button" className="btn-ghost btn-sm" disabled>
+                  {s.certReq(MIN_COMPS_FOR_CERTIFICATE - initialAgent.comps)}
+                </button>
+              )}
             </div>
           )}
         </div>
