@@ -148,28 +148,94 @@ async function callAgent(endpoint: string, prompt: string): Promise<{ response: 
 // paga su propio consumo de IA, no Umbra. Compiten en igualdad de condiciones
 // (mismo modelo); lo único que los distingue es la calidad de su prompt.
 
-async function runPromptWithGemini(
+// Detecta el proveedor de IA por el formato de la llave. Casi todos hablan el
+// formato de OpenAI (mismo request/response); Anthropic y Google tienen el suyo.
+interface Provider {
+  kind: "openai" | "anthropic" | "gemini"
+  url: string
+  model: string
+}
+
+function detectProvider(apiKey: string): Provider | null {
+  const k = apiKey.trim()
+  if (k.startsWith("sk-ant-")) return { kind: "anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-3-5-haiku-latest" }
+  if (k.startsWith("sk-or-"))  return { kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", model: "openai/gpt-4o-mini" }
+  if (k.startsWith("gsk_"))    return { kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile" }
+  if (k.startsWith("xai-"))    return { kind: "openai", url: "https://api.x.ai/v1/chat/completions", model: "grok-2-latest" }
+  if (k.startsWith("AIza"))    return { kind: "gemini", url: "", model: "gemini-flash-lite-latest" }
+  if (k.startsWith("sk-"))     return { kind: "openai", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" }
+  return null
+}
+
+// Ejecuta un prompt contra el proveedor que corresponda a la llave. Devuelve el
+// texto o null si la llave es de un proveedor no soportado o la llamada falla.
+async function callModel(
   apiKey: string,
   systemPrompt: string,
-  prompt: string,
+  userPrompt: string,
+  maxTokens: number,
 ): Promise<string | null> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
-  const res = await fetch(url, {
+  const p = detectProvider(apiKey)
+  if (!p) return null
+
+  if (p.kind === "gemini") {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${p.model}:generateContent?key=${apiKey}`
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+      }),
+    })
+    if (!res.ok) {
+      console.error("callModel/gemini", res.status, await res.text().catch(() => ""))
+      return null
+    }
+    const data = await res.json()
+    return (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim() || null
+  }
+
+  if (p.kind === "anthropic") {
+    const res = await fetch(p.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: p.model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    })
+    if (!res.ok) {
+      console.error("callModel/anthropic", res.status, await res.text().catch(() => ""))
+      return null
+    }
+    const data = await res.json()
+    return (data?.content?.[0]?.text ?? "").trim() || null
+  }
+
+  // OpenAI-compatible (OpenAI, Groq, OpenRouter, xAI, y muchos otros).
+  const res = await fetch(p.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: AGENT_MAX_TOKENS, temperature: 0.7 },
+      model: p.model,
+      max_tokens: maxTokens,
+      temperature: 0.7,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
     }),
   })
   if (!res.ok) {
-    console.error("runPromptWithGemini error", res.status, await res.text().catch(() => ""))
+    console.error("callModel/openai", res.status, await res.text().catch(() => ""))
     return null
   }
   const data = await res.json()
-  const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
-  return text.trim() || null
+  return (data?.choices?.[0]?.message?.content ?? "").trim() || null
 }
 
 // Ejecuta el agente de prompt con la llave de su dueño. Sin llave no puede correr.
@@ -181,7 +247,7 @@ async function runPromptAgent(
   if (!apiKey) return { response: null, ms: null }
   const started = Date.now()
   try {
-    const out = await runPromptWithGemini(apiKey, systemPrompt, prompt)
+    const out = await callModel(apiKey, systemPrompt, prompt, AGENT_MAX_TOKENS)
     return out ? { response: out, ms: Date.now() - started } : { response: null, ms: null }
   } catch (e) {
     console.error("runPromptAgent falló", e)
