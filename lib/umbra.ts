@@ -53,6 +53,29 @@ export function formatTimeUntil(date: Date | string | null, lang: Lang = "es"): 
   return `${minutes}m`
 }
 
+/**
+ * Cuándo arranca una competencia que aún no ha empezado.
+ *
+ * Se muestra la hora programada, no una cuenta regresiva sobre `startedAt`:
+ * esa columna se llena al CREAR la competencia, así que ya está en el pasado y
+ * hacía que toda competencia próxima dijera "Ya comenzó".
+ *
+ * El navegador lo formatea en la zona horaria de quien mira, así cada persona
+ * ve la hora que le corresponde.
+ */
+export function formatStartAt(scheduledAt: Date | string | null, lang: Lang = "es"): string {
+  const d = toDate(scheduledAt)
+  // Sin hora programada, el admin la inicia a mano: no se promete una hora.
+  if (!d) return lang === "en" ? "Start to be announced" : "Inicio por definir"
+  const cuando = new Intl.DateTimeFormat(lang === "en" ? "en-US" : "es-CO", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d)
+  return lang === "en" ? `Starts ${cuando}` : `Inicia ${cuando}`
+}
+
 export function formatCountdown(date: Date | string | null, lang: Lang = "es"): string {
   const d = toDate(date)
   if (!d) return ""

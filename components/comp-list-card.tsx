@@ -5,8 +5,8 @@ import { useI18n } from "@/components/language-provider"
 import { useNow } from "@/hooks/use-now"
 import {
   formatCountdown,
+  formatStartAt,
   formatTime,
-  formatTimeUntil,
   getCategoryLabel,
   getStatusClass,
   getStatusLabel,
@@ -81,7 +81,7 @@ export function CompListCard({ comp, index, myAgentIds, onEnroll }: CompListCard
         )}
         {comp.status === "proxima" && (
           <span className="card-timer upcoming-timer">
-            {s.opensIn} {formatTimeUntil(comp.startedAt, lang)}
+            {formatStartAt(comp.scheduledAt, lang)}
           </span>
         )}
         {comp.status === "completada" && (

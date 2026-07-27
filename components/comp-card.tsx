@@ -4,12 +4,12 @@ import Link from "next/link"
 import { useI18n } from "@/components/language-provider"
 import { useNow } from "@/hooks/use-now"
 import type { Competition } from "@/lib/types"
-import { formatTimeUntil, getCategoryLabel, getStatusClass, getStatusLabel } from "@/lib/umbra"
+import { formatStartAt, formatTimeUntil, getCategoryLabel, getStatusClass, getStatusLabel } from "@/lib/umbra"
 
 // Textos de la tarjeta en ambos idiomas.
 const T = {
-  es: { remaining: "restante", opensIn: "Abre en", ended: "Finalizada", see: "Ver \u2192" },
-  en: { remaining: "left", opensIn: "Opens in", ended: "Ended", see: "See \u2192" },
+  es: { remaining: "restante", ended: "Finalizada", see: "Ver \u2192" },
+  en: { remaining: "left", ended: "Ended", see: "See \u2192" },
 } as const
 
 export function CompCard({ comp }: { comp: Competition }) {
@@ -23,7 +23,7 @@ export function CompCard({ comp }: { comp: Competition }) {
     comp.status === "en-curso"
       ? `${formatTimeUntil(comp.endsAt, lang)} ${s.remaining}`
       : comp.status === "proxima"
-        ? `${s.opensIn} ${formatTimeUntil(comp.startedAt, lang)}`
+        ? formatStartAt(comp.scheduledAt, lang)
         : s.ended
 
   return (
