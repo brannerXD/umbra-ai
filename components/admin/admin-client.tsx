@@ -24,6 +24,9 @@ import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/toast-provider"
 import {
   type AdminStats,
+  adminDeleteUser,
+  adminSetUsername,
+  adminWarnUser,
   createCompetition,
   getAdminFeedback,
   getAdminStats,
@@ -128,6 +131,13 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
   const [expandido, setExpandido] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<FeedbackEntry[]>([])
   const [panelesCargando, setPanelesCargando] = useState(true)
+
+  // Moderación de usuarios
+  const [moderar, setModerar] = useState<{ id: string; nombre: string } | null>(null)
+  const [renombreDraft, setRenombreDraft] = useState("")
+  const [advertenciaDraft, setAdvertenciaDraft] = useState("")
+  const [modBusy, setModBusy] = useState(false)
+  const [confirmarBorrar, setConfirmarBorrar] = useState(false)
 
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState<Category>("texto")
@@ -246,6 +256,54 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
       return
     }
     showToast("Competencia ejecutada. Resultados actualizados.", "success")
+    router.refresh()
+  }
+
+  function abrirModerar(u: { id: string; nombre: string }) {
+    setModerar({ id: u.id, nombre: u.nombre })
+    setRenombreDraft(u.nombre)
+    setAdvertenciaDraft("")
+    setConfirmarBorrar(false)
+  }
+
+  async function guardarRenombre() {
+    if (!moderar || !renombreDraft.trim() || renombreDraft.trim() === moderar.nombre) return
+    setModBusy(true)
+    const res = await adminSetUsername(moderar.id, renombreDraft.trim())
+    setModBusy(false)
+    if (!res.ok) {
+      showToast(res.message ?? "No se pudo renombrar.", "warn")
+      return
+    }
+    showToast("Usuario renombrado.", "success")
+    setModerar(null)
+    router.refresh()
+  }
+
+  async function enviarAdvertencia() {
+    if (!moderar || !advertenciaDraft.trim()) return
+    setModBusy(true)
+    const ok = await adminWarnUser(moderar.id, advertenciaDraft.trim())
+    setModBusy(false)
+    if (!ok) {
+      showToast("No se pudo enviar la advertencia.", "warn")
+      return
+    }
+    showToast("Advertencia enviada. La verá la próxima vez que entre.", "success")
+    setModerar(null)
+  }
+
+  async function eliminarUsuario() {
+    if (!moderar) return
+    setModBusy(true)
+    const res = await adminDeleteUser(moderar.id)
+    setModBusy(false)
+    if (!res.ok) {
+      showToast(res.message ?? "No se pudo eliminar el usuario.", "warn")
+      return
+    }
+    showToast(`${moderar.nombre} fue eliminado.`, "success")
+    setModerar(null)
     router.refresh()
   }
 
@@ -484,14 +542,23 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
                       <span className="admin-muted">{fechaCorta(u.registrado)}</span>
                       <span>{u.eventos}</span>
                       <span className="admin-muted">{fechaCorta(u.ultimaActividad)}</span>
-                      <button
-                        type="button"
-                        className="btn-ghost btn-sm"
-                        disabled={u.eventos === 0}
-                        onClick={() => setExpandido(expandido === u.id ? null : u.id)}
-                      >
-                        {expandido === u.id ? "Ocultar" : "Ver"}
-                      </button>
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          disabled={u.eventos === 0}
+                          onClick={() => setExpandido(expandido === u.id ? null : u.id)}
+                        >
+                          {expandido === u.id ? "Ocultar" : "Ver"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          onClick={() => abrirModerar({ id: u.id, nombre: u.nombre })}
+                        >
+                          Moderar
+                        </button>
+                      </div>
                     </div>
                     {expandido === u.id && (
                       <div className="actividad-detalle">
@@ -675,6 +742,89 @@ export function AdminClient({ competitions }: { competitions: Competition[] }) {
           </div>
         </div>
       </div>
+
+      {moderar && (
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setModerar(null)}>
+          <div className="modal-box">
+            <button className="modal-close" aria-label="Cerrar" onClick={() => setModerar(null)}>
+              ✕
+            </button>
+            <h3 className="modal-title">Moderar a {moderar.nombre}</h3>
+
+            <div className="field-group">
+              <label className="field-label">Cambiar apodo</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  className="field-input"
+                  maxLength={30}
+                  value={renombreDraft}
+                  onChange={(e) => setRenombreDraft(e.target.value)}
+                />
+                <button
+                  className="btn-primary btn-sm"
+                  disabled={modBusy || !renombreDraft.trim() || renombreDraft.trim() === moderar.nombre}
+                  onClick={guardarRenombre}
+                >
+                  <span>Guardar</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="field-group">
+              <label className="field-label">Enviar una advertencia</label>
+              <textarea
+                className="field-input"
+                rows={2}
+                maxLength={280}
+                placeholder="Ej: Deja de crear cuentas falsas o serás eliminado."
+                value={advertenciaDraft}
+                onChange={(e) => setAdvertenciaDraft(e.target.value)}
+              />
+              <div className="perfil-bio-actions">
+                <span className="char-counter">{advertenciaDraft.length}/280</span>
+                <button
+                  className="btn-ghost btn-sm"
+                  disabled={modBusy || !advertenciaDraft.trim()}
+                  onClick={enviarAdvertencia}
+                >
+                  <span>Enviar advertencia</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="field-group">
+              <label className="field-label" style={{ color: "#e5484d" }}>
+                Zona peligrosa
+              </label>
+              {!confirmarBorrar ? (
+                <button className="btn-ghost btn-sm" onClick={() => setConfirmarBorrar(true)}>
+                  Eliminar usuario y todos sus datos
+                </button>
+              ) : (
+                <div>
+                  <p className="admin-hint">
+                    Borra la cuenta, sus agentes, historial y datos. No se puede deshacer.
+                  </p>
+                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                    <button className="btn-ghost btn-sm" onClick={() => setConfirmarBorrar(false)}>
+                      Cancelar
+                    </button>
+                    <button className="btn-primary btn-sm" disabled={modBusy} onClick={eliminarUsuario}>
+                      <span>{modBusy ? "Eliminando…" : "Sí, eliminar definitivamente"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-ghost" onClick={() => setModerar(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

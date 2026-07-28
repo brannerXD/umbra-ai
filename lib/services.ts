@@ -1353,6 +1353,67 @@ export async function getUserActivity(limit = 50): Promise<UserActivity[]> {
   }))
 }
 
+// ── MODERACIÓN (solo admin) ──────────────
+
+/** Renombra a cualquier usuario (override de admin, sin cooldown). */
+export async function adminSetUsername(
+  userId: string,
+  username: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const { error } = await supabase.rpc("admin_set_username", { p_user_id: userId, p_username: username })
+  if (error) {
+    if (error.message.includes("entre 2 y 30")) {
+      return { ok: false, message: "El apodo debe tener entre 2 y 30 caracteres." }
+    }
+    return { ok: false, message: "No se pudo renombrar al usuario." }
+  }
+  return { ok: true }
+}
+
+/** Le deja una advertencia a un usuario (la ve la próxima vez que entre). */
+export async function adminWarnUser(userId: string, message: string): Promise<boolean> {
+  const { error } = await supabase.rpc("admin_warn_user", { p_user_id: userId, p_message: message })
+  return !error
+}
+
+/** Elimina un usuario y todos sus datos (atómico). No permite borrar admins ni a sí mismo. */
+export async function adminDeleteUser(userId: string): Promise<{ ok: boolean; message?: string }> {
+  const { error } = await supabase.rpc("admin_delete_user", { p_user_id: userId })
+  if (error) {
+    if (error.message.includes("propia cuenta")) return { ok: false, message: "No puedes eliminar tu propia cuenta." }
+    if (error.message.includes("otro administrador")) return { ok: false, message: "No se puede eliminar a otro administrador." }
+    return { ok: false, message: "No se pudo eliminar el usuario." }
+  }
+  return { ok: true }
+}
+
+/** Advertencia sin reconocer, para mostrarle al usuario. */
+export interface UserWarning {
+  id: string
+  message: string
+  createdAt: Date
+}
+
+/** Advertencias sin reconocer del usuario en sesión. */
+export async function getMyWarnings(): Promise<UserWarning[]> {
+  const { data, error } = await supabase
+    .from("user_warnings")
+    .select("id, message, created_at")
+    .eq("acknowledged", false)
+    .order("created_at", { ascending: false })
+  if (error || !data) return []
+  return (data as { id: string; message: string; created_at: string }[]).map((w) => ({
+    id: w.id,
+    message: w.message,
+    createdAt: new Date(w.created_at),
+  }))
+}
+
+/** Marca una advertencia como vista. */
+export async function acknowledgeWarning(id: string): Promise<void> {
+  await supabase.from("user_warnings").update({ acknowledged: true }).eq("id", id)
+}
+
 /** Actividad del usuario en sesion (mapa de contribuciones del perfil). */
 export async function getMyActivity(days = 365): Promise<MyActivity | null> {
   const { data, error } = await supabase.rpc("my_activity", { p_days: days })
