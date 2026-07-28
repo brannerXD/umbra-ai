@@ -434,11 +434,29 @@ export async function listCompetitions(): Promise<Competition[]> {
     .order("started_at", { ascending: false })
   if (error || !data) return []
 
-  return Promise.all(
-    (data as CompetitionRow[]).map(async (row) => {
-      const results = await fetchResultsForCompetition(row.id, row.status)
-      return mapCompetition(row, results)
-    }),
+  const rows = data as unknown as CompetitionRow[]
+  const ids = rows.map((r) => r.id)
+  if (ids.length === 0) return []
+
+  // Una sola consulta para las entradas de TODAS las competencias, en vez de una
+  // por competencia (N+1). Esto reducía la página a ~16 viajes a la BD y la hacía
+  // trivial de saturar; ahora son 2 consultas fijas sin importar cuántas haya.
+  const { data: entriesData } = await supabase
+    .from("competition_entries")
+    .select(
+      "competition_id, agent_id, response, response_time_ms, final_score, agents(name), evaluations(accuracy, reasoning, structure, utility, comments)",
+    )
+    .in("competition_id", ids)
+
+  const byComp = new Map<string, EntryRow[]>()
+  for (const e of (entriesData ?? []) as unknown as (EntryRow & { competition_id: string })[]) {
+    const arr = byComp.get(e.competition_id) ?? []
+    arr.push(e)
+    byComp.set(e.competition_id, arr)
+  }
+
+  return rows.map((row) =>
+    mapCompetition(row, mapResults(byComp.get(row.id) ?? [], row.status === "completada")),
   )
 }
 
