@@ -922,6 +922,40 @@ a.btn-primary:active,
   border: 1px solid var(--border);
 }
 
+/* Aviso de advertencia de un moderador (banner bajo la navbar) */
+.warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 900px;
+  margin: 12px auto 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(229, 72, 77, 0.1);
+  border: 1px solid rgba(229, 72, 77, 0.4);
+  color: var(--text);
+}
+.warning-banner-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  color: #e5484d;
+}
+.warning-banner-body { flex: 1; min-width: 0; }
+.warning-banner-body strong { display: block; font-size: 0.85rem; margin-bottom: 2px; }
+.warning-banner-body p { margin: 0; font-size: 0.9rem; color: var(--text-2); }
+.warning-banner-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.warning-banner-btn:hover { background: var(--surface-3, var(--border)); }
+
 /* Insignia del tipo de agente: prompt / endpoint / código. Compartida por
    la ficha del agente y la lista "Mis agentes" del perfil. */
 .kind-tag {

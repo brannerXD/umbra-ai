@@ -7,6 +7,7 @@ import { LanguageProvider } from "./language-provider"
 import { Navbar } from "./navbar"
 import { ThemeProvider } from "./theme-provider"
 import { ToastProvider } from "./toast-provider"
+import { WarningBanner } from "./warning-banner"
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <ToastProvider>
           <AuthProvider>
             <Navbar />
+            <WarningBanner />
             <main>{children}</main>
             <Footer />
           </AuthProvider>
