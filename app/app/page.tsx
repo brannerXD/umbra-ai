@@ -6,9 +6,11 @@ import { Ticker } from "@/components/home/ticker"
 import { getMarketplaceListings, getRankedAgents, listCompetitions } from "@/lib/services"
 import "./home.css"
 
-// El ranking y las competencias activas cambian constantemente. force-dynamic evita
-// que Next.js congele esta página como estática y muestre datos viejos.
-export const dynamic = "force-dynamic"
+// El ranking y las competencias cambian seguido, pero NO cada segundo. Con ISR
+// (revalidate) la página se sirve desde caché y solo se reconsulta la BD como
+// mucho cada 30s: datos frescos + la base no se puede tumbar a punta de recargas
+// (antes, con force-dynamic, cada recarga disparaba una ráfaga de consultas).
+export const revalidate = 30
 
 export default async function HomePage() {
   const [allAgents, competitions, listings] = await Promise.all([
