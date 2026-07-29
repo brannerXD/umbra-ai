@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { CompListCard } from "@/components/comp-list-card"
 import { InscripcionModal } from "@/components/inscripcion-modal"
@@ -30,6 +31,7 @@ const T = {
     groupDone: "Completadas",
     empty: "No hay competencias con este filtro.",
     seeAll: "Ver todas →",
+    archive: "Ver archivo de competencias",
     needSignIn: "Inicia sesión primero para inscribir un agente.",
     needAgent: "No tienes agentes registrados. Registra uno primero.",
   },
@@ -49,10 +51,15 @@ const T = {
     groupDone: "Completed",
     empty: "There are no competitions matching this filter.",
     seeAll: "See all →",
+    archive: "View competition archive",
     needSignIn: "Sign in first to enter an agent.",
     needAgent: "You have no registered agents. Register one first.",
   },
 } as const
+
+// En la vista principal, "Completadas" solo muestra las últimas N; el resto vive
+// en el archivo de competencias (buscable). Evita que la lista crezca sin fin.
+const DONE_PREVIEW = 5
 
 type Str = (typeof T)["es"]
 
@@ -159,13 +166,16 @@ export function CompetenciasClient({
       <section className="comps-section">
         <div className="container">
           {GROUPS.map((group) => {
-            const comps = filtered.filter((c) => c.status === group.key)
-            if (comps.length === 0) return null
+            const all = filtered.filter((c) => c.status === group.key)
+            if (all.length === 0) return null
+            // "Completadas" se recorta a las últimas N; el resto está en el archivo.
+            const isDone = group.key === "completada"
+            const comps = isDone ? all.slice(0, DONE_PREVIEW) : all
             return (
               <div className="comp-group" key={group.key}>
                 <h2 className="group-title">
                   <span className={`status-dot ${group.dot}`} />
-                  {s[group.label]} <span className="group-count">{comps.length}</span>
+                  {s[group.label]} <span className="group-count">{all.length}</span>
                 </h2>
                 <div className="comp-list">
                   {comps.map((comp, i) => (
@@ -178,6 +188,16 @@ export function CompetenciasClient({
                     />
                   ))}
                 </div>
+                {isDone && (
+                  <Link href="/competencias/archivo" className="archive-link">
+                    <span className="archive-link-icon" aria-hidden>
+                      🗄
+                    </span>
+                    {s.archive}
+                    <span className="archive-link-count">{all.length}</span>
+                    <span aria-hidden>→</span>
+                  </Link>
+                )}
               </div>
             )
           })}
