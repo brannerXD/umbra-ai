@@ -19,7 +19,7 @@ const T = {
     tabAll: "Todas",
     tabLive: "En curso",
     tabUpcoming: "Próximas",
-    tabDone: "Completadas",
+    tabDone: "Recientes",
     catAll: "Categoría",
     catText: "Análisis de Texto",
     catCode: "Generación de Código",
@@ -28,10 +28,11 @@ const T = {
     filterAria: "Filtrar por categoría",
     groupLive: "En curso",
     groupUpcoming: "Próximas",
-    groupDone: "Completadas",
+    groupDone: "Recientes",
     empty: "No hay competencias con este filtro.",
     seeAll: "Ver todas →",
     archive: "Ver archivo de competencias",
+    recentEmpty: "No hubo competencias en las últimas 12 h. Míralas en el archivo.",
     needSignIn: "Inicia sesión primero para inscribir un agente.",
     needAgent: "No tienes agentes registrados. Registra uno primero.",
   },
@@ -39,7 +40,7 @@ const T = {
     tabAll: "All",
     tabLive: "Live",
     tabUpcoming: "Upcoming",
-    tabDone: "Completed",
+    tabDone: "Recent",
     catAll: "Category",
     catText: "Text Analysis",
     catCode: "Code Generation",
@@ -48,18 +49,20 @@ const T = {
     filterAria: "Filter by category",
     groupLive: "Live",
     groupUpcoming: "Upcoming",
-    groupDone: "Completed",
+    groupDone: "Recent",
     empty: "There are no competitions matching this filter.",
     seeAll: "See all →",
     archive: "View competition archive",
+    recentEmpty: "No competitions in the last 12h. Find them in the archive.",
     needSignIn: "Sign in first to enter an agent.",
     needAgent: "You have no registered agents. Register one first.",
   },
 } as const
 
-// En la vista principal, "Completadas" solo muestra las últimas N; el resto vive
-// en el archivo de competencias (buscable). Evita que la lista crezca sin fin.
-const DONE_PREVIEW = 5
+// En la vista principal, "Recientes" muestra las competencias iniciadas en las
+// últimas 12 h; pasado ese tiempo quedan solo en el archivo (buscable). Así la
+// lista no crece sin fin pero lo recién ocurrido queda a la vista.
+const RECENT_WINDOW_MS = 12 * 60 * 60 * 1000
 
 type Str = (typeof T)["es"]
 
@@ -78,18 +81,23 @@ const CAT_OPTIONS: { value: CatFilter; key: keyof Str }[] = [
   { value: "razonamiento", key: "catReason" },
 ]
 
+// Las "Recientes" (completadas) se renderizan aparte con su ventana de 12 h;
+// aquí solo van los grupos en vivo y por venir.
 const GROUPS: { key: CompetitionStatus; label: keyof Str; dot: string }[] = [
   { key: "en-curso", label: "groupLive", dot: "dot-live" },
   { key: "proxima", label: "groupUpcoming", dot: "dot-upcoming" },
-  { key: "completada", label: "groupDone", dot: "dot-done" },
 ]
 
 export function CompetenciasClient({
   competitions,
   allAgents,
+  recentCutoffMs,
 }: {
   competitions: Competition[]
   allAgents: Agent[]
+  /** Umbral (epoch ms) calculado en el server: ahora − 12 h. Se pasa como prop
+   *  para que server y cliente filtren igual y no haya desajuste de hidratación. */
+  recentCutoffMs: number
 }) {
   const router = useRouter()
   const { user, openAuth } = useAuth()
@@ -166,16 +174,13 @@ export function CompetenciasClient({
       <section className="comps-section">
         <div className="container">
           {GROUPS.map((group) => {
-            const all = filtered.filter((c) => c.status === group.key)
-            if (all.length === 0) return null
-            // "Completadas" se recorta a las últimas N; el resto está en el archivo.
-            const isDone = group.key === "completada"
-            const comps = isDone ? all.slice(0, DONE_PREVIEW) : all
+            const comps = filtered.filter((c) => c.status === group.key)
+            if (comps.length === 0) return null
             return (
               <div className="comp-group" key={group.key}>
                 <h2 className="group-title">
                   <span className={`status-dot ${group.dot}`} />
-                  {s[group.label]} <span className="group-count">{all.length}</span>
+                  {s[group.label]} <span className="group-count">{comps.length}</span>
                 </h2>
                 <div className="comp-list">
                   {comps.map((comp, i) => (
@@ -188,19 +193,53 @@ export function CompetenciasClient({
                     />
                   ))}
                 </div>
-                {isDone && (
+              </div>
+            )
+          })}
+
+          {/* Recientes: competencias iniciadas en las últimas 12 h. Pasado ese
+              tiempo quedan solo en el archivo. Se oculta si el filtro es a un
+              estado que no es "completada". */}
+          {status !== "en-curso" &&
+            status !== "proxima" &&
+            (() => {
+              const totalArchivo = competitions.filter((c) => c.status === "completada").length
+              if (totalArchivo === 0) return null
+              const recientes = filtered.filter(
+                (c) => c.status === "completada" && c.startedAt.getTime() >= recentCutoffMs,
+              )
+              return (
+                <div className="comp-group">
+                  <h2 className="group-title">
+                    <span className="status-dot dot-done" />
+                    {s.groupDone} <span className="group-count">{recientes.length}</span>
+                  </h2>
+                  {recientes.length > 0 ? (
+                    <div className="comp-list">
+                      {recientes.map((comp, i) => (
+                        <CompListCard
+                          key={comp.id}
+                          comp={comp}
+                          index={i}
+                          myAgentIds={myAgentIds}
+                          onEnroll={handleEnroll}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="recientes-empty">{s.recentEmpty}</p>
+                  )}
                   <Link href="/competencias/archivo" className="archive-link">
                     <span className="archive-link-icon" aria-hidden>
                       🗄
                     </span>
                     {s.archive}
-                    <span className="archive-link-count">{all.length}</span>
+                    <span className="archive-link-count">{totalArchivo}</span>
                     <span aria-hidden>→</span>
                   </Link>
-                )}
-              </div>
-            )
-          })}
+                </div>
+              )
+            })()}
 
           {isEmpty && (
             <div className="page-empty">

@@ -469,3 +469,10 @@
   .archive-field { width: 100%; }
   .archive-field .filter-select { width: 100%; }
 }
+
+/* Estado vacío del bloque "Recientes" (sin competencias en las últimas 12 h). */
+.recientes-empty {
+  color: var(--text-3);
+  font-size: 0.9rem;
+  padding: 10px 2px 4px;
+}

@@ -19,11 +19,20 @@ export const revalidate = 30
 export default async function CompetenciasPage() {
   const [competitions, allAgents] = await Promise.all([listCompetitions(), getRankedAgents()])
 
+  // Umbral de "Recientes": competencias iniciadas en las últimas 12 h. Se calcula
+  // en el server (con ISR se refresca al revalidar) y se pasa al cliente para que
+  // ambos filtren con el mismo valor y no haya desajuste de hidratación.
+  const recentCutoffMs = Date.now() - 12 * 60 * 60 * 1000
+
   return (
     <main>
       <CompetenciasHeader />
 
-      <CompetenciasClient competitions={competitions} allAgents={allAgents} />
+      <CompetenciasClient
+        competitions={competitions}
+        allAgents={allAgents}
+        recentCutoffMs={recentCutoffMs}
+      />
     </main>
   )
 }
