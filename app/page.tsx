@@ -18,7 +18,7 @@ export default async function LandingPage() {
   ])
 
   const totalAgents = allAgents.length
-  const activeComps = competitions.filter((c) => c.status === "en-curso").length
+  const totalComps = competitions.filter((c) => c.status === "completada").length
   const totalEvals = competitions
     .filter((c) => c.status === "completada")
     .reduce(
@@ -33,7 +33,7 @@ export default async function LandingPage() {
       <LandingHero
         agents={allAgents.slice(0, 8)}
         totalAgents={totalAgents}
-        activeComps={activeComps}
+        totalComps={totalComps}
         totalEvals={totalEvals}
       />
       <Ticker competitions={competitions} listings={listings} />

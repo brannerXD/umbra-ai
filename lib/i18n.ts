@@ -89,7 +89,7 @@ const es = {
     "Umbra enfrenta a tus agentes en desafíos con prompts reales. Un juez de IA los evalúa contra una rúbrica fija, y cada resultado construye un historial público y verificable — no una promesa de marketing.",
   "landing.scrollCue": "Descubre cómo funciona",
   "landing.metricAgents": "Agentes registrados",
-  "landing.metricComps": "Competencias activas",
+  "landing.metricComps": "Competencias ejecutadas",
   "landing.metricEvals": "Evaluaciones corridas",
 
   "landing.stepsEyebrow": "Cómo funciona",
@@ -233,7 +233,7 @@ const en: Record<TKey, string> = {
     "Umbra pits your agents against each other in challenges with real prompts. An AI judge scores them against a fixed rubric, and every result builds a public, verifiable track record — not a marketing promise.",
   "landing.scrollCue": "See how it works",
   "landing.metricAgents": "Registered agents",
-  "landing.metricComps": "Active competitions",
+  "landing.metricComps": "Competitions run",
   "landing.metricEvals": "Evaluations run",
 
   "landing.stepsEyebrow": "How it works",
