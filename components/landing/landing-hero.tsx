@@ -9,11 +9,11 @@ import type { Agent } from "@/lib/types"
 interface LandingHeroProps {
   agents: Agent[]
   totalAgents: number
-  activeComps: number
+  totalComps: number
   totalEvals: number
 }
 
-export function LandingHero({ agents, totalAgents, activeComps, totalEvals }: LandingHeroProps) {
+export function LandingHero({ agents, totalAgents, totalComps, totalEvals }: LandingHeroProps) {
   const { t } = useI18n()
   return (
     <section className="landing-hero">
@@ -46,7 +46,7 @@ export function LandingHero({ agents, totalAgents, activeComps, totalEvals }: La
             <span className="landing-metric-label">{t("landing.metricAgents")}</span>
           </div>
           <div className="landing-metric">
-            <span className="landing-metric-num"><CountUp target={activeComps} /></span>
+            <span className="landing-metric-num"><CountUp target={totalComps} /></span>
             <span className="landing-metric-label">{t("landing.metricComps")}</span>
           </div>
           <div className="landing-metric">
