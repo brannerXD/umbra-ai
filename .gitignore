@@ -26,3 +26,7 @@ Thumbs.db
 .claude/settings.local.json
 .vercel
 .env*
+
+# Solana devnet (local, no commitear)
+scripts/.devnet-keypair.json
+scripts/last-attestation.json

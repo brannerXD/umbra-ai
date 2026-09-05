@@ -58,7 +58,7 @@ interface TurnstileProps {
   theme?: "dark" | "light"
 }
 
-export function Turnstile({ onToken, onExpire, theme = "dark" }: TurnstileProps) {
+export function Turnstile({ onToken, onExpire, theme }: TurnstileProps) {
   const ref = useRef<HTMLDivElement>(null)
   const widgetId = useRef<string | null>(null)
   // Los callbacks se guardan en refs para no re-renderizar el widget cuando
@@ -76,9 +76,14 @@ export function Turnstile({ onToken, onExpire, theme = "dark" }: TurnstileProps)
     loadScript()
       .then(() => {
         if (cancelled || !ref.current || !window.turnstile) return
+        // Sin prop explícita, el widget sigue el tema activo de la app (claro
+        // por defecto) leyendo el atributo aplicado en <html>.
+        const effectiveTheme =
+          theme ??
+          (document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light")
         widgetId.current = window.turnstile.render(ref.current, {
           sitekey: SITE_KEY,
-          theme,
+          theme: effectiveTheme,
           callback: (token: string) => cbToken.current(token),
           "expired-callback": () => cbExpire.current?.(),
           "error-callback": () => cbExpire.current?.(),

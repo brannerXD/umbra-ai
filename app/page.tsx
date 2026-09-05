@@ -1,10 +1,10 @@
 import { Ticker } from "@/components/home/ticker"
-import { LandingBackground } from "@/components/landing/landing-background"
 import { LandingCta } from "@/components/landing/landing-cta"
 import { LandingHero } from "@/components/landing/landing-hero"
+import { LandingIntro } from "@/components/landing/landing-intro"
+import { LandingLeaderboard } from "@/components/landing/landing-leaderboard"
+import { LandingLoader } from "@/components/landing/landing-loader"
 import { LandingMarquee } from "@/components/landing/landing-marquee"
-import { LandingOrigin } from "@/components/landing/landing-origin"
-import { LandingScrollTrack } from "@/components/landing/landing-scroll-track"
 import { LandingSteps } from "@/components/landing/landing-steps"
 import { LandingWhy } from "@/components/landing/landing-why"
 import { getMarketplaceListings, getRankedAgents, listCompetitions } from "@/lib/services"
@@ -27,20 +27,16 @@ export default async function LandingPage() {
     )
 
   return (
-    <LandingScrollTrack>
-      <LandingBackground />
-      <LandingOrigin />
-      <LandingHero
-        agents={allAgents.slice(0, 8)}
-        totalAgents={totalAgents}
-        totalComps={totalComps}
-        totalEvals={totalEvals}
-      />
+    <div className="landing-track">
+      <LandingLoader />
+      <LandingHero />
+      <LandingIntro totalAgents={totalAgents} totalComps={totalComps} totalEvals={totalEvals} />
       <Ticker competitions={competitions} listings={listings} />
       <LandingSteps />
+      <LandingLeaderboard agents={allAgents} />
       <LandingMarquee />
       <LandingWhy />
       <LandingCta />
-    </LandingScrollTrack>
+    </div>
   )
 }

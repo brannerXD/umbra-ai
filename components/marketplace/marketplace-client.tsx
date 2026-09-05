@@ -9,6 +9,7 @@ import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { getCategoryLabel, formatListingPrice, getBillingLabel } from "@/lib/umbra"
 import { getAgentVersions, getCodeDownloadUrl, getPurchasedListingIds, iniciarCompra } from "@/lib/services"
+import { safeExternalUrl } from "@/lib/utils"
 import type { AgentVersion, MarketplaceListingWithAgent, Agent } from "@/lib/types"
 
 type SortKey = "score-desc" | "price-asc" | "price-desc" | "recent"
@@ -562,8 +563,8 @@ export function MarketplaceClient({
             {details.listingType === "codigo" && (
               <div className="detail-facts">
                 {details.codeLicense && <span>{s.dLicenseLabel} <strong>{details.codeLicense}</strong></span>}
-                {details.gitRepo && (
-                  <a href={details.gitRepo} target="_blank" rel="noopener noreferrer" className="detail-repo">{s.dRepo}</a>
+                {safeExternalUrl(details.gitRepo) && (
+                  <a href={safeExternalUrl(details.gitRepo)} target="_blank" rel="noopener noreferrer" className="detail-repo">{s.dRepo}</a>
                 )}
               </div>
             )}

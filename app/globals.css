@@ -18,9 +18,11 @@
   padding: 0;
 }
 
-/* TEMA OSCURO (default) */
-:root,
-[data-theme="dark"] {
+/* TEMA OSCURO (opcional).
+   Selector con :root para ganar en especificidad al bloque :root claro de
+   arriba (misma especificidad → ganaría el último en la cascada). Así, cuando
+   data-theme="dark" está activo, estos valores mandan. */
+:root[data-theme="dark"] {
   --bg:         #0A0A0A;
   --bg-2:       #111111;
   --surface:    #161616;
@@ -40,23 +42,27 @@
   --orange:     #F59E0B;
   --orange-dim: rgba(245,158,11,0.08);
 
-  --shadow:     0 8px 32px rgba(0,0,0,0.5);
-  --shadow-lg:  0 16px 64px rgba(0,0,0,0.7);
-  --noise-opacity: 0.025;
+  --shadow:     0 6px 24px rgba(0,0,0,0.32);
+  --shadow-lg:  0 14px 48px rgba(0,0,0,0.42);
 }
 
-/* TEMA CLARO */
+/* TEMA CLARO (default).
+   Gris neutro alineado con el fondo de la escena NEXBOT (gris claro, sin tinte
+   cálido). Antes era crema (#F7F5F0); ahora la landing y la escena 3D comparten
+   el mismo lienzo. `--bg` es el gris exacto de NEXBOT (#E3E3E3); las superficies
+   suben hacia el blanco para dar capas. */
+:root,
 [data-theme="light"] {
-  --bg:         #F7F5F0;
-  --bg-2:       #FBFAF7;
-  --surface:    #FFFFFF;
-  --surface-2:  #F0EEE8;
-  --border:     #E2DFD5;
-  --border-2:   #CFCBBD;
+  --bg:         #E3E3E3;
+  --bg-2:       #DBDBDB;
+  --surface:    #EDEDED;
+  --surface-2:  #FBFBFB;
+  --border:     #D0D0D0;
+  --border-2:   #BDBDBD;
   --text:       #0A0A0A;
-  --text-2:     #5C594E;
-  --text-3:     #918D80;
-  --invert:     #F7F5F0;
+  --text-2:     #575757;
+  --text-3:     #878787;
+  --invert:     #E3E3E3;
   --logo-url:   url('/logo-black.png');
 
   --green:      #16A34A;
@@ -66,9 +72,8 @@
   --orange:     #D97706;
   --orange-dim: rgba(217,119,6,0.07);
 
-  --shadow:     0 8px 32px rgba(0,0,0,0.08);
-  --shadow-lg:  0 16px 64px rgba(0,0,0,0.12);
-  --noise-opacity: 0.018;
+  --shadow:     0 6px 24px rgba(0,0,0,0.06);
+  --shadow-lg:  0 14px 48px rgba(0,0,0,0.10);
 }
 
 :root {
@@ -93,18 +98,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   transition: background var(--transition), color var(--transition);
   overflow-x: hidden;
-}
-
-/* film grain texture overlay — premium analog feel */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: var(--noise-opacity);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
 }
 
 ::-webkit-scrollbar { width: 6px; }
@@ -544,8 +537,8 @@ body::before {
 /* LOGO */
 .logo-glyph {
   display: inline-block;
-  width: 26px;
-  height: 17px;
+  width: 34px;
+  height: 30px;
   background-image: var(--logo-url);
   background-size: contain;
   background-repeat: no-repeat;
@@ -1435,6 +1428,51 @@ a.btn-primary:active,
   border-top: 1px solid var(--border);
 }
 
+/* CRÉDITOS: atribución de recursos de terceros (escenas 3D, tipografías, íconos). */
+.footer-credits {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  align-items: baseline;
+}
+
+.footer-credits-label {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.footer-credits-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.footer-credits-list a {
+  color: var(--text-2);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.footer-credits-list a:hover {
+  color: var(--text);
+  border-bottom-color: var(--border-2);
+}
+
 /* EMPTY STATES */
 .page-empty { text-align: center; padding: 72px 24px; }
 
@@ -1856,23 +1894,28 @@ a.btn-primary:active,
   .nav-right { min-width: 0; }
   .nav-right .theme-toggle { flex-shrink: 0; }
 
-  /* La pieza flexible: cede antes que la navegación. */
+  /* La pieza flexible: cede antes que la navegación. Ancho suficiente para que
+     "Iniciar sesión" quepa completo; solo el nombre de usuario largo se recorta. */
   .nav-right .btn-wallet {
     min-width: 0;
     flex-shrink: 1;
-    max-width: 120px;
+    max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .nav-right .btn-wallet.connected { max-width: 128px; }
 }
 
 /* Teléfonos muy angostos (Galaxy S23, iPhone SE y menores). */
 @media (max-width: 380px) {
   .nav-inner { padding: 0 12px; gap: 6px; }
   .nav-right { gap: 6px; }
-  .nav-right .btn-wallet { max-width: 92px; padding: 8px 10px; font-size: 0.7rem; }
+  .nav-right .btn-wallet { max-width: 118px; padding: 8px 10px; font-size: 0.7rem; }
+  .nav-right .btn-wallet.connected { max-width: 96px; }
   .nav-logo .wordmark { font-size: 0.86rem; letter-spacing: 0.12em; }
+  /* El logo grande (34px) en pantallas muy angostas cede un poco para dar aire. */
+  .nav-logo .logo-glyph { width: 28px; height: 25px; }
 }
 
 /* ═══ FOOTER: desbordaba en móvil ═══

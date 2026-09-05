@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { getCodeDownloadUrl, getPurchasedAgents, issueLicense } from "@/lib/services"
+import { safeExternalUrl } from "@/lib/utils"
 import { formatTime } from "@/lib/umbra"
 import type { AgentVersion, PurchasedAgent } from "@/lib/types"
 
@@ -339,10 +340,10 @@ export function ComprasClient() {
             <h3 className="modal-title">{selected.listing.agent.name}</h3>
             <p className="modal-sub">
               {selected.listing.codeLicense ? `${s.licenseLabel} ${selected.listing.codeLicense}` : s.badgeLicense}
-              {selected.listing.gitRepo && (
+              {safeExternalUrl(selected.listing.gitRepo) && (
                 <>
                   {" · "}
-                  <a href={selected.listing.gitRepo} target="_blank" rel="noopener noreferrer" className="compra-git">
+                  <a href={safeExternalUrl(selected.listing.gitRepo)} target="_blank" rel="noopener noreferrer" className="compra-git">
                     <GitBranch aria-hidden style={{ width: 13, height: 13, verticalAlign: "-2px" }} /> {s.repo}
                   </a>
                 </>
