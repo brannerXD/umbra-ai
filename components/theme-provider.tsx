@@ -12,11 +12,11 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark")
+  const [theme, setTheme] = useState<Theme>("light")
 
   // Sincroniza con el atributo aplicado por el script anti-flash.
   useEffect(() => {
-    const current = (document.documentElement.getAttribute("data-theme") as Theme) || "dark"
+    const current = (document.documentElement.getAttribute("data-theme") as Theme) || "light"
     setTheme(current)
   }, [])
 

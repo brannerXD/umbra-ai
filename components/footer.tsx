@@ -34,6 +34,47 @@ export function Footer() {
         <p className="footer-copy">{t("footer.copy")}</p>
       </div>
 
+      <div className="container footer-credits">
+        <span className="footer-credits-label">{t("footer.credits")}</span>
+        <ul className="footer-credits-list">
+          <li>
+            {t("footer.creditsModels")}:{" "}
+            <a
+              href="https://app.spline.design/community/file/615b9422-9985-43f6-8593-d7d7bc3b0be1"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              NEXBOT
+            </a>{" "}
+            — aximoris,{" "}
+            <a
+              href="https://app.spline.design/community/file/8742cc34-173e-4de2-8bca-acb57971c516"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Rememberall-Robot
+            </a>{" "}
+            — aayushishukla{" · "}
+            <a href="https://spline.design" target="_blank" rel="noopener noreferrer">
+              Spline
+            </a>
+          </li>
+          <li>
+            {t("footer.creditsFonts")}:{" "}
+            <a href="https://fonts.google.com" target="_blank" rel="noopener noreferrer">
+              Google Fonts
+            </a>{" "}
+            — Inter, Fraunces, Jost, JetBrains Mono
+          </li>
+          <li>
+            {t("footer.creditsIcons")}:{" "}
+            <a href="https://lucide.dev" target="_blank" rel="noopener noreferrer">
+              Lucide
+            </a>
+          </li>
+        </ul>
+      </div>
+
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </footer>
   )

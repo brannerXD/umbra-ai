@@ -4,206 +4,103 @@
 
 .landing-track { position: relative; }
 
-/* Fondo interactivo — campo de puntos en canvas, reacciona al cursor */
-.landing-bg-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* ORIGEN — de aquí nace la línea */
-.landing-origin {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: calc(var(--nav-h) + 44px) 0 0;
-}
-
-.landing-origin-text {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(2.6rem, 9vw, 5.4rem);
-  letter-spacing: 0.03em;
-  color: var(--text);
-  text-shadow: 0 0 18px var(--text), 0 0 50px color-mix(in srgb, var(--text) 55%, transparent);
-  animation: origin-pulse 2.6s var(--ease) infinite;
-}
-
-@keyframes origin-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.8; }
-}
-
-/* Subrayado neón — el rayo parece salir de aquí. El punto real (invisible)
-   vive escondido justo en su mitad. Las puntas se desvanecen para que se
-   sienta luz, no una barra sólida. */
-.landing-origin-underline {
-  position: relative;
-  width: 220px;
-  max-width: 46vw;
-  height: 3px;
-  margin-top: 20px;
-  background: linear-gradient(to right, transparent, var(--text) 18%, var(--text) 82%, transparent);
-  border-radius: 2px;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--text) 70%, transparent), 0 0 28px color-mix(in srgb, var(--text) 45%, transparent);
-  animation: origin-pulse 2.6s var(--ease) infinite;
-}
-
-/* En tema claro el "glow" oscuro se vuelve mancha — se atenúa a sombra sutil. */
-[data-theme="light"] .landing-origin-text {
-  text-shadow: 0 0 14px color-mix(in srgb, var(--text) 22%, transparent);
-}
-
-[data-theme="light"] .landing-origin-underline {
-  box-shadow: 0 0 8px color-mix(in srgb, var(--text) 25%, transparent);
-}
-
-.landing-origin-spine-start {
+/* ── FONDO DEL HERO (robot) ───────────────────────────────────────────
+   Capa DENTRO del hero (no fija): se desplaza con el scroll, así el robot
+   sube y desaparece al bajar, y el único texto que se le superpone es el
+   wordmark UMBRA. Aloja la escena 3D de Spline (NEXBOT); sin escena, el
+   fondo sobrio de abajo mantiene el hero con intención. */
+.landing-bg {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* Fallback sobrio: viñeta sutil centrada en el color del tema. Cuando la
+     escena de Spline cargue encima, este degradado queda debajo y apenas se
+     nota; sin escena, es un fondo limpio y serio. */
+  background:
+    radial-gradient(120% 80% at 70% 30%, color-mix(in srgb, var(--surface) 60%, transparent), transparent 60%),
+    var(--bg);
+}
+
+/* En tema oscuro, un halo suave detrás del robot (visible a través del fondo
+   transparente de la escena) despega su silueta negra del casi-negro. */
+:root[data-theme="dark"] .landing-bg {
+  background:
+    radial-gradient(78% 60% at 50% 34%, #1f1f1f 0%, transparent 62%),
+    var(--bg);
+}
+
+/* La escena 3D ocupa todo el fondo. En móvil se desplaza para que el
+   personaje no quede tapado por el contenido. */
+.landing-bg-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Velo de legibilidad sobre la escena: garantiza el contraste del texto (el
+   wordmark y el hero van centrados sobre el robot) sin apagar del todo el 3D.
+   Velo vertical parejo: deja ver el personaje pero mantiene legible el texto
+   oscuro sobre las zonas oscuras del robot. */
+.landing-bg-scrim {
+  position: absolute;
+  inset: 0;
+  /* Ya sólo el wordmark UMBRA (grande) se superpone al robot, así que el velo
+     es muy leve: el robot luce dramático y las letras siguen legibles por su
+     tamaño y por los reflejos claros del casco. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 8%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 16%, transparent) 42%,
+    color-mix(in srgb, var(--bg) 6%, transparent) 100%
+  );
+}
+
+/* En tema oscuro el texto ya es claro y se lee sobre el robot oscuro: el velo
+   apenas hace falta y sólo lo escondería. Se deja mínimo para que el personaje
+   y sus reflejos tengan la máxima presencia posible sobre el fondo casi negro. */
+:root[data-theme="dark"] .landing-bg-scrim {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 12%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 28%, transparent) 55%,
+    color-mix(in srgb, var(--bg) 12%, transparent) 100%
+  );
 }
 
 @media (max-width: 768px) {
-  .landing-origin { padding-top: calc(var(--nav-h) + 28px); }
-}
-
-/* SPINE — línea que serpentea por el centro de la página y termina en el botón final */
-.landing-spine {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.landing-spine-fill {
-  stroke: var(--text);
-  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--text) 40%, transparent));
-  transition: stroke 0.5s var(--ease), filter 0.5s var(--ease);
-}
-
-.landing-track.spine-done .landing-spine-fill {
-  stroke: var(--green);
-  filter: drop-shadow(0 0 10px var(--green)) drop-shadow(0 0 26px color-mix(in srgb, var(--green) 65%, transparent));
-}
-
-/* El punto que va a la cabeza de la linea queda oculto a proposito: la linea
-   se dibuja sola y se lee mejor sin el. El elemento sigue existiendo y el JS
-   sigue posicionandolo, asi que para recuperarlo basta quitar el display:none.
-   Lo mismo aplica a .landing-checkpoint mas abajo. */
-.landing-spine-dot {
-  display: none;
-
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--text);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--text) 50%, transparent);
-  transition: opacity 0.5s var(--ease);
-  z-index: 3;
-  pointer-events: none;
-}
-
-/* Al llegar al botón, el punto se funde en él y desaparece — el glow verde
-   del botón toma el relevo. */
-.landing-track.spine-done .landing-spine-dot {
-  opacity: 0;
-}
-
-.landing-checkpoint-anchor {
-  display: block;
-  width: 0;
-  height: 0;
-}
-
-/* Los puntos de cada seccion: ocultos igual que el de la cabeza. No influyen
-   en la forma de la curva, que se calcula en computePoint(). */
-.landing-checkpoint {
-  display: none;
-
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  transform: translate(-50%, -50%);
-  transition: background 0.5s var(--ease), border-color 0.5s var(--ease), box-shadow 0.5s var(--ease);
-  z-index: 3;
-}
-
-.landing-checkpoint.checkpoint-lit {
-  background: var(--text);
-  border-color: var(--text);
-  box-shadow: 0 0 9px 2px color-mix(in srgb, var(--text) 45%, transparent);
-}
-
-@media (max-width: 900px) {
-  .landing-spine, .landing-spine-dot, .landing-checkpoint { display: none; }
+  /* En móvil el texto ocupa todo el ancho: velo algo más denso. */
+  .landing-bg-scrim {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg) 70%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 82%, transparent) 100%
+    );
+  }
 }
 
 /* HERO */
 .landing-hero {
   position: relative;
-  padding: 36px 0 100px;
+  /* Hero a media altura de viewport: deja respirar la escena 3D del fondo y
+     da el aire editorial que pide un look serio y minimalista. */
+  min-height: min(88vh, 780px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: calc(var(--nav-h) + 64px) 0 100px;
   overflow: hidden;
 }
 
-.landing-hero-glyph {
-  position: absolute;
-  top: 50%;
-  right: -6%;
-  width: 46vw;
-  max-width: 620px;
-  aspect-ratio: 1081 / 673;
-  transform: translateY(-50%);
-  pointer-events: none;
-  z-index: 0;
-  background-image: var(--logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.05;
-  animation: glyph-breathe 8s var(--ease) infinite;
-}
-
-.landing-hero-orbit {
-  position: absolute;
-  top: -60px;
-  right: -80px;
-  width: 480px;
-  height: 480px;
-  perspective: 1100px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.75;
-}
-
-@media (max-width: 1100px) {
-  .landing-hero-orbit { opacity: 0.35; right: -160px; }
-}
-
-@media (max-width: 768px) {
-  .landing-hero-orbit { display: none; }
-}
-
+/* Hero de marca: composición centrada, con el wordmark UMBRA sobre el robot. */
 .landing-hero-content {
   position: relative;
   z-index: 1;
-  max-width: 720px;
+  max-width: 840px;
+  margin: 0 auto;
+  text-align: center;
 }
 
 .landing-eyebrow {
@@ -218,7 +115,9 @@
   border: 1px solid var(--border-2);
   border-radius: 100px;
   padding: 6px 15px;
-  margin-bottom: 32px;
+  margin-bottom: 30px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(4px);
 }
 
 .landing-eyebrow-dot {
@@ -228,24 +127,62 @@
   animation: pulse-dot 2s infinite;
 }
 
-.landing-title {
-  font-family: var(--font-display);
-  font-size: clamp(2.6rem, 6vw, 4.6rem);
-  font-weight: 500;
-  line-height: 1.06;
-  letter-spacing: -0.02em;
+/* ── WORDMARK UMBRA (marca, sobre el robot) ── */
+.landing-wordmark {
+  display: flex;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0.34em;                 /* el tracking amplio; con flex el centrado es exacto */
+  font-family: var(--font-jost), var(--font-sans), sans-serif;
+  font-weight: 300;
+  font-size: clamp(2.9rem, 13vw, 9.5rem);
+  line-height: 1;
   color: var(--text);
-  margin-bottom: 26px;
+  margin: 0 0 24px;
 }
 
-.landing-title em { font-style: italic; font-weight: 400; }
+.landing-wordmark-letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.42em);
+  filter: blur(12px);
+  animation: wordmark-letter-in 1.1s var(--ease) forwards;
+  will-change: opacity, transform, filter;
+}
+
+@keyframes wordmark-letter-in {
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-wordmark-letter {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    animation: none;
+  }
+}
+
+/* Tagline (antes el titular): apoya al wordmark, en un cuerpo discreto. */
+.landing-tagline {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.8vw, 1.85rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text-2);
+  margin: 0 auto 22px;
+  max-width: 620px;
+}
+
+.landing-tagline em { font-style: italic; font-weight: 400; color: var(--text); }
 
 .landing-sub {
-  font-size: 1.1rem;
+  font-size: 1.02rem;
   color: var(--text-2);
-  line-height: 1.7;
-  max-width: 560px;
-  margin-bottom: 44px;
+  line-height: 1.65;
+  max-width: 520px;
+  margin: 0 auto 40px;
 }
 
 .scroll-cue {
@@ -266,6 +203,120 @@
   50%      { transform: translateY(6px); opacity: 1; }
 }
 
+/* ── HERO DE MARCA: wordmark centrado, a la altura del pecho del robot ── */
+.landing-hero-brand {
+  justify-content: center;
+  padding: calc(var(--nav-h) + 40px) 0 44px;
+}
+
+.landing-hero-brand .landing-hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── INTRO: propuesta de valor + métricas, debajo del hero (fondo limpio) ── */
+.landing-intro {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: clamp(24px, 5vh, 56px) 0 8px;
+}
+
+/* El indicador de scroll va aquí (justo debajo de la escena, no sobre el robot). */
+.landing-intro-cue { margin: 0 auto clamp(30px, 6vh, 64px); }
+
+/* ── PANTALLA DE CARGA (mientras carga la escena 3D) ── */
+.landing-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background: var(--bg);
+  transition: opacity 0.7s var(--ease), visibility 0.7s var(--ease);
+}
+
+.landing-loader.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Logo (U + órbita) arriba del wordmark: entra con fundido + escala y luego
+   respira suave. Usa `--logo-url`, así se adapta a claro/oscuro. */
+.landing-loader-logo {
+  width: clamp(58px, 15vw, 88px);
+  height: clamp(58px, 15vw, 88px);
+  background-image: var(--logo-url);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation:
+    loader-logo-in 0.7s var(--ease) both,
+    loader-logo-pulse 3.4s var(--ease) 0.7s infinite;
+}
+
+@keyframes loader-logo-in {
+  0%   { opacity: 0; transform: scale(0.82) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes loader-logo-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.055); }
+}
+
+.landing-loader-mark {
+  display: flex;
+  gap: 0.34em;
+  font-family: var(--font-jost), var(--font-sans), sans-serif;
+  font-weight: 300;
+  font-size: clamp(1.8rem, 7vw, 3.4rem);
+  color: var(--text);
+}
+
+.landing-loader-mark span {
+  display: inline-block;
+  animation: loader-letter 1.5s var(--ease) infinite;
+}
+
+@keyframes loader-letter {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
+
+.landing-loader-bar {
+  width: min(200px, 44vw);
+  height: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.landing-loader-bar span {
+  display: block;
+  height: 100%;
+  width: 42%;
+  border-radius: 2px;
+  background: var(--text);
+  animation: loader-bar 1.3s var(--ease) infinite;
+}
+
+@keyframes loader-bar {
+  0%   { transform: translateX(-130%); }
+  100% { transform: translateX(320%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-loader-logo { animation: none; opacity: 1; transform: none; }
+  .landing-loader-mark span { opacity: 1; animation: none; }
+  .landing-loader-bar span { animation: none; }
+}
+
 /* METRICS STRIP */
 .landing-metrics {
   position: relative;
@@ -275,7 +326,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  margin-top: 8px;
+  margin: 8px auto 0;
+  max-width: 620px;
+  width: 100%;
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  backdrop-filter: blur(6px);
 }
 
 .landing-metric {
@@ -536,6 +591,113 @@
 
 .landing-why-body { font-size: 0.9rem; color: var(--text-2); line-height: 1.65; }
 
+/* ── LEADERBOARD EN VIVO (dinámico) ── */
+.landing-lb-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.landing-lb-live { margin-top: 6px; flex-shrink: 0; }
+
+.landing-lb-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.landing-lb-row {
+  display: grid;
+  grid-template-columns: 30px 34px minmax(110px, 1.1fr) minmax(80px, 1.5fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 15px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease), background var(--transition);
+}
+
+.landing-lb-row:last-child { border-bottom: none; }
+.landing-lb-row.is-live { opacity: 1; transform: translateY(0); }
+.landing-lb-row:hover { background: var(--surface-2); }
+
+.landing-lb-row.is-top { background: color-mix(in srgb, var(--text) 5%, var(--surface)); }
+.landing-lb-row.is-top:hover { background: color-mix(in srgb, var(--text) 8%, var(--surface)); }
+
+.landing-lb-rank {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-3);
+  text-align: center;
+}
+.landing-lb-row.is-top .landing-lb-rank { color: var(--text); }
+
+.landing-lb-avatar { width: 34px; height: 34px; }
+
+.landing-lb-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.landing-lb-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.landing-lb-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing-lb-bar {
+  height: 8px;
+  border-radius: 100px;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.landing-lb-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--text-3), var(--text));
+  transition: width 1.1s var(--ease);
+}
+.landing-lb-row.is-top .landing-lb-bar-fill {
+  background: linear-gradient(90deg, var(--text-2), var(--text));
+}
+
+.landing-lb-score {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
+}
+.landing-lb-score em { font-style: normal; font-size: 0.66rem; color: var(--text-3); margin-left: 4px; }
+
+@media (max-width: 640px) {
+  .landing-lb-head { flex-direction: column; }
+  .landing-lb-row { grid-template-columns: 24px 30px 1fr auto; gap: 12px; padding: 13px 14px; }
+  .landing-lb-bar { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-lb-row { transition: background var(--transition); opacity: 1; transform: none; }
+  .landing-lb-bar-fill { transition: none; }
+}
+
 /* PROOF STRIP (CTA) */
 .landing-proof {
   display: flex;
@@ -578,18 +740,7 @@
   transition: transform var(--transition), box-shadow var(--transition);
 }
 
-.landing-cta-section .btn-primary:hover { transform: translateY(-2px) scale(1.02); }
-
-.btn-primary.lit {
-  border-color: var(--green);
-  box-shadow: 0 0 0 1px var(--green), 0 0 16px 2px var(--green), 0 0 40px 6px color-mix(in srgb, var(--green) 55%, transparent);
-  animation: cta-pulse 1.8s var(--ease) infinite;
-}
-
-@keyframes cta-pulse {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.015); }
-}
+.landing-cta-section .btn-primary:hover { transform: translateY(-2px); }
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
@@ -599,7 +750,6 @@
 }
 
 @media (max-width: 768px) {
-  .landing-hero-glyph { opacity: 0.04; }
   .landing-section { padding: 64px 0; }
   .landing-cta-section { padding: 80px 0 96px; }
 }
@@ -618,7 +768,7 @@
     margin-bottom: 18px;
   }
 
-  .landing-hero { padding: 24px 0 64px; }
+  .landing-hero { min-height: auto; padding: calc(var(--nav-h) + 32px) 0 56px; }
   .landing-eyebrow { margin-bottom: 20px; font-size: 0.72rem; padding: 5px 13px; }
 
   /* max-width de escritorio ya no aplica: que use todo el ancho disponible. */
@@ -629,7 +779,6 @@
     margin-bottom: 30px;
   }
 
-  .landing-hero-word { font-size: clamp(2rem, 11vw, 3.4rem); }
   .landing-section { padding: 60px 0; }
   .landing-cta-section { padding: 68px 0 76px; }
   .landing-cta-title { font-size: clamp(1.6rem, 7vw, 2.4rem); }

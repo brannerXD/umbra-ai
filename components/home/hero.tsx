@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRef } from "react"
 import { CountUp } from "@/components/count-up"
+import { HeroRobot } from "@/components/home/hero-robot"
 import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
 
@@ -35,7 +36,7 @@ export function Hero({ totalAgents, activeComps, totalEvals }: HeroProps) {
   return (
     <section className="hero" ref={heroRef} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="hero-glyph-bg" ref={glyphRef}>
-        <div className="hero-glyph-bg-inner" />
+        <HeroRobot />
       </div>
       <div className="container">
         <div className="hero-content">

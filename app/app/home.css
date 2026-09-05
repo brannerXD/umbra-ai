@@ -11,10 +11,10 @@
 .hero-glyph-bg {
   position: absolute;
   top: 50%;
-  right: 3%;
-  width: 44vw;
-  max-width: 580px;
-  aspect-ratio: 1081 / 673;
+  right: 4%;
+  width: 38vw;
+  max-width: 520px;
+  aspect-ratio: 1 / 1;
   transform: translateY(-50%);
   pointer-events: none;
   z-index: 0;
@@ -31,6 +31,105 @@
   opacity: 0.07;
   animation: glyph-breathe 8s var(--ease) infinite;
   transform-origin: 65% 50%;
+}
+
+/* Robot 3D (Spline) que reemplaza al logo flotante del hero. El contenedor
+   `.hero-glyph-bg` tiene pointer-events:none; aquí lo reactivamos para que el
+   robot sea clickeable (→ /docs, cómo competir). */
+.hero-robot {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Halo detrás del orbe. El orbe es negro; en tema oscuro sobre fondo casi-negro
+   se perdería, así que un resplandor suave lo despega del fondo. Se ve a través
+   de las zonas transparentes de la escena (el canvas es transparente salvo la
+   bolita). Solo en oscuro. */
+.hero-robot::before {
+  content: "";
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 60%);
+  opacity: 0;
+  transition: opacity 0.6s var(--ease);
+  pointer-events: none;
+}
+:root[data-theme="dark"] .hero-robot::before {
+  opacity: 1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hero-robot::before {
+    opacity: 1;
+  }
+}
+
+.hero-robot-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Sin glow de color: el orbe queda en negro/escala de grises. */
+  filter: grayscale(1) contrast(1.04);
+}
+
+/* Mensaje tipo burbujita de chat que "dice" el robot. Aparece ARRIBA del orbe,
+   cayendo desde arriba, con la cola apuntando hacia abajo (hacia el robot). */
+.hero-robot-hint {
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  transform: translateX(-50%);
+  max-width: 232px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px 14px 4px 14px;
+  padding: 8px 14px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  /* Siempre visible; cada mensaje re-monta el span (key) y re-dispara este pop. */
+  animation: hero-hint-pop 0.5s var(--ease) both;
+}
+
+@keyframes hero-hint-pop {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(0.95); }
+  55%  { opacity: 1; }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* Cola de la burbuja (dos triángulos: relleno + borde) apuntando hacia ABAJO. */
+.hero-robot-hint::before {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 22px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid var(--border);
+}
+.hero-robot-hint::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 23px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid var(--surface-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-robot-scene { display: none; }
+  /* Sin animación: el mensaje se muestra fijo. */
+  .hero-robot-hint { animation: none; opacity: 1; transform: translateX(-50%); }
 }
 
 .ranking-orbit {
@@ -292,6 +391,20 @@
   .hero-sub { font-size: 1rem; max-width: none; }
   .hero-content { max-width: none; }
   .section-ranking { padding: 56px 0; }
+
+  /* Robot del hero en móvil: el orbe es opaco y en absolute/right se encimaba
+     con el texto (ancho completo en móvil). Lo sacamos del flujo absoluto y lo
+     centramos ARRIBA del contenido (va antes en el DOM), a un tamaño contenido.
+     En táctil no hay cursor que seguir: es decorativo pero sigue siendo tappable
+     (→ /docs). `!important` en transform por si el parallax JS dejó un inline. */
+  .hero-glyph-bg {
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: none !important;
+    width: min(86vw, 340px);
+    margin: 0 auto 20px;
+  }
 }
 
 @media (max-width: 480px) {

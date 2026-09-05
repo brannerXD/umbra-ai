@@ -42,6 +42,10 @@ const es = {
   "footer.terms": "Términos",
   "footer.privacy": "Privacidad",
   "footer.copy": "© 2026 Umbra-Agents. Todos los derechos reservados.",
+  "footer.credits": "Créditos",
+  "footer.creditsModels": "Modelos 3D",
+  "footer.creditsFonts": "Tipografías",
+  "footer.creditsIcons": "Íconos",
 
   // ————— Ranking (/app) —————
   "app.eyebrow": "Acceso anticipado",
@@ -188,6 +192,10 @@ const en: Record<TKey, string> = {
   "footer.terms": "Terms",
   "footer.privacy": "Privacy",
   "footer.copy": "© 2026 Umbra-Agents. All rights reserved.",
+  "footer.credits": "Credits",
+  "footer.creditsModels": "3D models",
+  "footer.creditsFonts": "Fonts",
+  "footer.creditsIcons": "Icons",
 
   "app.eyebrow": "Early access",
   "app.titleA": "An agent's reputation",
