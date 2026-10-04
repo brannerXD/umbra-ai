@@ -263,6 +263,11 @@ export interface CertificateIssuance {
   wins: number
   score: number
   issuedAt: Date
+  /** SHA-256 del certificado (null hasta que se sella en Solana). */
+  certHash: string | null
+  /** Firma de la transacción de Solana que contiene el sello. */
+  onchainSignature: string | null
+  onchainCluster: "devnet" | "mainnet-beta" | null
 }
 
 // ── OPINIONES Y ACTIVIDAD (panel de admin) ──

@@ -1,21 +1,48 @@
 // ========================================
-// UMBRA — CAPA DE BLOCKCHAIN (SOLANA)
+// UMBRA — CAPA DE BLOCKCHAIN (SOLANA) — lado web
 // ========================================
-// Umbra publica en Solana una "atestación" del Trust Score de un agente: un
-// hash SHA-256 del estado reputacional (score, victorias, competencias...) en
-// un momento dado. Ese hash queda escrito on-chain vía el programa Memo.
+// Umbra sella en Solana (programa Memo) dos cosas:
+//   1. El Trust Score de cada agente  → memo `umbra:v1:<agentId>:<sha256>`
+//   2. Cada certificado emitido       → memo `umbra:cert:v1:<certId>:<sha256>`
 //
-// Por qué sirve: cualquiera puede recalcular el hash a partir de los datos
-// PÚBLICOS del agente y compararlo con el que está en la cadena. Si coinciden,
-// se prueba que ese Trust Score existía en esa fecha y no fue alterado. Es
-// reputación verificable e independiente de nuestro servidor.
+// Este módulo VERIFICA esos sellos desde el navegador, sin pasar por Umbra:
+// recalcula el hash de los datos públicos y lo compara con el memo leído
+// directamente del RPC de Solana. No tiene claves ni dependencias: la FIRMA y
+// el ENVÍO viven en las Edge Functions (supabase/functions/attest-*).
 //
-// Este módulo es PURO (sin dependencias externas ni claves): solo define el
-// formato canónico, el hash y las URLs del explorador. La FIRMA y el ENVÍO de
-// la transacción viven en `scripts/publish-attestation.mjs` (fuera del bundle),
-// para no cargar la wallet ni @solana/web3.js en el navegador.
+// El formato canónico y el hash se importan del módulo compartido que usan
+// también las Edge Functions: una sola implementación, cero desalineación.
 
-/** Red de Solana a la que apunta la atestación. */
+import {
+  AGENT_PREFIX,
+  MEMO_PROGRAM_ID,
+  agentMemo,
+  buildAgentPayload,
+  buildCertificatePayload,
+  canonicalize,
+  certMemo,
+  sha256Hex,
+  type AttestationPayload,
+  type CertificatePayload,
+} from "../supabase/functions/_shared/umbra-attestation.ts"
+
+export {
+  AGENT_PREFIX,
+  MEMO_PROGRAM_ID,
+  agentMemo,
+  buildAgentPayload,
+  buildCertificatePayload,
+  canonicalize,
+  certMemo,
+  sha256Hex,
+  type AttestationPayload,
+  type CertificatePayload,
+}
+
+/** Prefijo del sello de Trust Score (compatibilidad con código previo). */
+export const ATTESTATION_PREFIX = AGENT_PREFIX
+
+/** Red de Solana a la que apuntan los sellos. */
 export type SolanaCluster = "devnet" | "mainnet-beta"
 
 /** Cluster activo. Se controla por env; por defecto devnet (gratis, sin riesgo). */
@@ -24,27 +51,22 @@ export const SOLANA_CLUSTER: SolanaCluster =
     ? "mainnet-beta"
     : "devnet"
 
-/** Programa Memo de la SPL — escribe texto arbitrario en una transacción. */
-export const MEMO_PROGRAM_ID = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+/**
+ * Wallet OFICIAL que firma los sellos de Umbra. Verificar sólo el memo no
+ * basta (cualquiera podría escribir el mismo texto desde otra wallet): la
+ * transacción además debe estar firmada por esta dirección.
+ */
+export const UMBRA_ATTESTER_WALLET =
+  process.env.NEXT_PUBLIC_SOLANA_ATTESTER?.trim() || "BDsEnYJ525WNMv9t2oBiAf8r3svqvraTcCP52nkAmWZg"
 
-/** Prefijo/versión del formato de atestación, para poder evolucionarlo. */
-export const ATTESTATION_PREFIX = "umbra:v1"
-
-/** RPC público para leer/escribir en la red elegida. */
+/** RPC público para leer de la red elegida. */
 export function rpcEndpoint(cluster: SolanaCluster = SOLANA_CLUSTER): string {
   return cluster === "mainnet-beta"
     ? "https://api.mainnet-beta.solana.com"
     : "https://api.devnet.solana.com"
 }
 
-// ─── Flags de conexión (todo apagado por defecto) ──────────────────────────
-// La blockchain queda "cableada" pero inerte hasta rellenar estas env. Así se
-// puede desplegar sin cambiar el comportamiento del sitio en vivo.
-
-/** ¿Mostrar/usar las atestaciones de Trust Score on-chain? */
-export function attestationsEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_SOLANA_ATTESTATIONS === "true"
-}
+// ─── Riel de pagos (inerte por defecto; ver lib/pagos-solana.ts) ───────────
 
 /** ¿Aceptar pagos en stablecoin por Solana (riel híbrido)? */
 export function solanaPaymentsEnabled(): boolean {
@@ -68,84 +90,14 @@ export function paymentTokenMint(cluster: SolanaCluster = SOLANA_CLUSTER): strin
   return cluster === "mainnet-beta" ? USDC_MINT_MAINNET : USDC_MINT_DEVNET
 }
 
-/** Instantánea reputacional que se sella en la cadena. Solo datos públicos. */
-export interface AttestationPayload {
-  prefix: typeof ATTESTATION_PREFIX
-  agentId: string
-  name: string
-  score: number
-  wins: number
-  comps: number
-  avgScore: number
-  /** ISO-8601 en UTC del momento de la atestación. */
-  issuedAt: string
+// ─── Sellos ────────────────────────────────────────────────────────────────
+
+/** Atajo histórico: hash de un payload de Trust Score. */
+export function hashAttestation(payload: AttestationPayload): Promise<string> {
+  return sha256Hex(payload)
 }
 
-/** Construye el payload canónico a partir de los datos públicos del agente. */
-export function buildAttestationPayload(
-  agent: {
-    id: string
-    name: string
-    score: number
-    wins: number
-    comps: number
-    avgScore: number
-  },
-  issuedAt: Date = new Date(),
-): AttestationPayload {
-  return {
-    prefix: ATTESTATION_PREFIX,
-    agentId: agent.id,
-    name: agent.name,
-    score: agent.score,
-    wins: agent.wins,
-    comps: agent.comps,
-    // 2 decimales, igual que la Edge Function `attest-agents` (mantener en par).
-    avgScore: Math.round(agent.avgScore * 100) / 100,
-    issuedAt: issuedAt.toISOString(),
-  }
-}
-
-/**
- * Serialización canónica: claves ordenadas alfabéticamente, sin espacios. Es
- * determinista, así que el mismo estado produce siempre el mismo string (y por
- * tanto el mismo hash), pueda recalcularlo quien sea.
- */
-export function canonicalize(payload: AttestationPayload): string {
-  const keys = Object.keys(payload).sort()
-  const obj: Record<string, unknown> = {}
-  const src = payload as unknown as Record<string, unknown>
-  for (const k of keys) obj[k] = src[k]
-  return JSON.stringify(obj)
-}
-
-/** SHA-256 (hex) del payload canónico, usando Web Crypto (Node y navegador). */
-export async function hashAttestation(payload: AttestationPayload): Promise<string> {
-  const data = new TextEncoder().encode(canonicalize(payload))
-  const digest = await crypto.subtle.digest("SHA-256", data)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-}
-
-/** Texto exacto que se escribe en el memo on-chain: `umbra:v1:<agentId>:<hash>`. */
-export function memoString(agentId: string, hash: string): string {
-  return `${ATTESTATION_PREFIX}:${agentId}:${hash}`
-}
-
-/**
- * Verifica una atestación: recalcula el hash del payload y lo compara con el que
- * quedó en la cadena. `true` => el Trust Score sellado coincide con estos datos.
- */
-export async function verifyAttestation(
-  payload: AttestationPayload,
-  onchainHash: string,
-): Promise<boolean> {
-  const computed = await hashAttestation(payload)
-  return computed === onchainHash.trim().toLowerCase()
-}
-
-/** Fila de `onchain_attestations` (un sello publicado). */
+/** Fila de `onchain_attestations` (un sello de Trust Score publicado). */
 export interface OnchainAttestation {
   agentId: string
   cluster: SolanaCluster
@@ -156,20 +108,53 @@ export interface OnchainAttestation {
   issuedAt: string
 }
 
+/** Datos públicos de un certificado emitido + su sello (si ya lo tiene). */
+export interface CertificateRecord {
+  id: string
+  agentId: string
+  agentName: string
+  score: number
+  wins: number
+  comps: number
+  avgScore: number
+  format: string
+  issuedAt: string
+  certHash: string | null
+  signature: string | null
+  cluster: SolanaCluster | null
+  wallet: string | null
+  onchainAt: string | null
+}
+
+export type VerifyResult = "ok" | "mismatch" | "unreachable"
+
+/** Inyectable en pruebas; en la app es el `fetch` global. */
+type Fetcher = typeof fetch
+
+/** Lo que nos interesa de una transacción leída de la cadena. */
+export interface OnchainTx {
+  /** Texto del memo (null si la tx no tiene instrucción Memo). */
+  memo: string | null
+  /** Direcciones que firmaron la transacción. */
+  signers: string[]
+}
+
 /**
- * Lee de la cadena el memo de una transacción (vía RPC público, sin librerías).
- * Devuelve el texto del memo o `null` si la tx no existe / no tiene memo.
+ * Lee una transacción de la cadena (vía RPC público, sin librerías): su memo y
+ * sus firmantes. Devuelve `null` si no se pudo leer (no existe o red caída).
  */
-export async function fetchOnchainMemo(
+export async function fetchOnchainTx(
   signature: string,
   cluster: SolanaCluster = SOLANA_CLUSTER,
-): Promise<string | null> {
+  fetcher: Fetcher = fetch,
+  retryDelayMs = 1200,
+): Promise<OnchainTx | null> {
   // El RPC público limita ráfagas (429 o `result: null` transitorio): se
   // reintenta un par de veces con espera creciente antes de rendirse.
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 1200 * attempt))
+    if (attempt > 0) await new Promise((r) => setTimeout(r, retryDelayMs * attempt))
     try {
-      const res = await fetch(rpcEndpoint(cluster), {
+      const res = await fetcher(rpcEndpoint(cluster), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -181,11 +166,15 @@ export async function fetchOnchainMemo(
       })
       if (!res.ok) continue
       const data = await res.json()
-      const ixs: { programId?: string; parsed?: unknown }[] | undefined =
-        data?.result?.transaction?.message?.instructions
+      const message = data?.result?.transaction?.message
+      const ixs: { programId?: string; parsed?: unknown }[] | undefined = message?.instructions
       if (!ixs) continue
       const memoIx = ixs.find((ix) => ix.programId === MEMO_PROGRAM_ID)
-      return typeof memoIx?.parsed === "string" ? memoIx.parsed : null
+      const keys: { pubkey?: string; signer?: boolean }[] = message?.accountKeys ?? []
+      return {
+        memo: typeof memoIx?.parsed === "string" ? memoIx.parsed : null,
+        signers: keys.filter((k) => k.signer && k.pubkey).map((k) => k.pubkey as string),
+      }
     } catch {
       /* red caída: reintenta */
     }
@@ -193,15 +182,97 @@ export async function fetchOnchainMemo(
   return null
 }
 
+/** Sólo el memo de una transacción (null si no se pudo leer o no tiene). */
+export async function fetchOnchainMemo(
+  signature: string,
+  cluster: SolanaCluster = SOLANA_CLUSTER,
+  fetcher: Fetcher = fetch,
+  retryDelayMs = 1200,
+): Promise<string | null> {
+  return (await fetchOnchainTx(signature, cluster, fetcher, retryDelayMs))?.memo ?? null
+}
+
 /**
- * Verificación completa e independiente de Umbra: recalcula el hash del
- * snapshot guardado y lo compara con el memo que está escrito EN LA CADENA.
+ * Verifica un sello de Trust Score: recalcula el hash del snapshot guardado y
+ * lo compara con el memo que está escrito EN LA CADENA.
  */
-export async function verifyOnchain(att: OnchainAttestation): Promise<"ok" | "mismatch" | "unreachable"> {
-  const memo = await fetchOnchainMemo(att.signature, att.cluster)
-  if (memo === null) return "unreachable"
-  const hash = await hashAttestation(att.snapshot)
-  return memo === memoString(att.agentId, hash) ? "ok" : "mismatch"
+export async function verifyOnchain(
+  att: OnchainAttestation,
+  fetcher: Fetcher = fetch,
+  retryDelayMs?: number,
+): Promise<VerifyResult> {
+  const tx = await fetchOnchainTx(att.signature, att.cluster, fetcher, retryDelayMs)
+  if (tx === null) return "unreachable"
+  const hash = await sha256Hex(att.snapshot)
+  const signedByUmbra = tx.signers.includes(UMBRA_ATTESTER_WALLET)
+  return signedByUmbra && tx.memo === agentMemo(att.agentId, hash) ? "ok" : "mismatch"
+}
+
+/** Hash de un certificado, recalculado desde sus datos PÚBLICOS. */
+export function hashCertificate(c: CertificateRecord): Promise<string> {
+  return sha256Hex(
+    buildCertificatePayload({
+      id: c.id,
+      agentId: c.agentId,
+      agentName: c.agentName,
+      score: c.score,
+      wins: c.wins,
+      comps: c.comps,
+      avgScore: c.avgScore,
+      format: c.format,
+      issuedAt: c.issuedAt,
+    }),
+  )
+}
+
+export interface CertificateCheck {
+  /** Hash recalculado desde los datos del certificado. */
+  computedHash: string
+  /** ¿Coincide con el hash registrado al emitirlo? */
+  hashMatches: boolean
+  /** Memo leído de Solana (null si no se pudo leer). */
+  memo: string | null
+  /** ¿La transacción la firmó la wallet oficial de Umbra? (null = sin leer) */
+  signerOk: boolean | null
+  /** Resultado global. "pending" = aún sin sello on-chain. */
+  result: VerifyResult | "pending"
+}
+
+/**
+ * Verificación completa de un certificado, independiente de Umbra:
+ *  1. recalcula el SHA-256 desde los datos públicos del certificado,
+ *  2. lo compara con el hash registrado,
+ *  3. lee la transacción de Solana: su memo debe ser
+ *     `umbra:cert:v1:<certId>:<hash recalculado>` y debe estar firmada por la
+ *     wallet oficial de Umbra (UMBRA_ATTESTER_WALLET).
+ */
+export async function verifyCertificate(
+  c: CertificateRecord,
+  fetcher: Fetcher = fetch,
+  retryDelayMs?: number,
+): Promise<CertificateCheck> {
+  const computedHash = await hashCertificate(c)
+  const hashMatches = c.certHash === computedHash
+  if (!c.signature) return { computedHash, hashMatches, memo: null, signerOk: null, result: "pending" }
+  const tx = await fetchOnchainTx(c.signature, c.cluster ?? SOLANA_CLUSTER, fetcher, retryDelayMs)
+  if (tx === null) return { computedHash, hashMatches, memo: null, signerOk: null, result: "unreachable" }
+  const signerOk = tx.signers.includes(UMBRA_ATTESTER_WALLET)
+  const ok = hashMatches && signerOk && tx.memo === certMemo(c.id, computedHash)
+  return { computedHash, hashMatches, memo: tx.memo, signerOk, result: ok ? "ok" : "mismatch" }
+}
+
+/**
+ * Interpreta lo que alguien pega para verificar: el ID del certificado (UUID),
+ * su hash SHA-256 (64 hex) o una URL que contenga cualquiera de los dos (p. ej.
+ * la del código QR). Devuelve null si no reconoce nada.
+ */
+export function parseCertificateQuery(query: string): { id: string } | { hash: string } | null {
+  const q = query.trim()
+  const id = q.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0]
+  if (id) return { id: id.toLowerCase() }
+  const hash = q.match(/\b[0-9a-f]{64}\b/i)?.[0]
+  if (hash) return { hash: hash.toLowerCase() }
+  return null
 }
 
 /** URL al explorador para una transacción. */

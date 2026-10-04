@@ -1,13 +1,22 @@
 import { renderToBuffer } from "@react-pdf/renderer"
 import { NextResponse } from "next/server"
-import { CertificateMobilePdf, CertificatePdf } from "@/components/certificado/certificate-pdf"
+import QRCode from "qrcode"
+import {
+  CertificateMobilePdf,
+  CertificatePdf,
+  type CertSeal,
+  verifyUrl,
+} from "@/components/certificado/certificate-pdf"
 import {
   MIN_COMPS_FOR_CERTIFICATE,
+  anchorCertificate,
   getAgentById,
-  getLatestAttestation,
   issueCertificate,
 } from "@/lib/services"
 import type { Lang } from "@/lib/i18n"
+
+// Emitir incluye esperar la confirmación de Solana (~1–3 s).
+export const maxDuration = 30
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -26,13 +35,36 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No se pudo emitir el certificado." }, { status: 500 })
   }
 
-  // Si el Trust Score está sellado en Solana, el PDF lleva la prueba on-chain.
-  const onchain = await getLatestAttestation(agent.id)
+  // Cada certificado se sella en Solana con su propio hash. Si la red falla,
+  // el PDF sale igual (con el sello "en proceso") y el cron lo sella después:
+  // el QR lleva a /verificar, que siempre muestra el estado real.
+  const anchored =
+    issuance.onchainSignature && issuance.certHash
+      ? { hash: issuance.certHash, signature: issuance.onchainSignature }
+      : await anchorCertificate(issuance.id)
+
+  let qr: string | null = null
+  try {
+    qr = await QRCode.toDataURL(`https://${verifyUrl(issuance.id)}`, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 240,
+      color: { dark: "#0A0A0A", light: "#F5F5F0" },
+    })
+  } catch {
+    /* sin QR: el enlace impreso sigue sirviendo */
+  }
+
+  const seal: CertSeal = {
+    hash: anchored?.hash ?? null,
+    signature: anchored?.signature ?? null,
+    qr,
+  }
 
   const document = isMobile ? (
-    <CertificateMobilePdf agent={agent} issuance={issuance} lang={lang} onchain={onchain} />
+    <CertificateMobilePdf agent={agent} issuance={issuance} lang={lang} seal={seal} />
   ) : (
-    <CertificatePdf agent={agent} issuance={issuance} lang={lang} onchain={onchain} />
+    <CertificatePdf agent={agent} issuance={issuance} lang={lang} seal={seal} />
   )
   const buffer = await renderToBuffer(document)
 
@@ -42,6 +74,8 @@ export async function GET(request: Request) {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${lang === "en" ? "certificate" : "certificado"}-${slug}${suffix}.pdf"`,
+      // Cada descarga es una emisión distinta: nunca cachear.
+      "Cache-Control": "no-store",
     },
   })
 }

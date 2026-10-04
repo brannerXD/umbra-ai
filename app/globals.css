@@ -2087,3 +2087,46 @@ a.btn-primary:active,
   .onchain-net { display: none; }
   .onchain-snap { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* TARJETAS DE ESTADÍSTICAS — compartidas por /agente y /certificado (antes
+   vivían sólo en agente.css y /certificado abierto directo salía sin estilo). */
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  transition: border-color var(--transition), transform var(--transition);
+  animation: card-fade-up 0.5s var(--ease) both;
+}
+
+.stat-card:hover {
+  border-color: var(--text-3);
+  transform: translateY(-2px);
+}
+
+.stat-card-main {
+  border-color: var(--text);
+}
+
+.stat-card-num {
+  font-family: var(--font-mono);
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-card-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 480px) {
+  .stat-card-num { font-size: 1.6rem; }
+}

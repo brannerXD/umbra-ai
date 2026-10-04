@@ -98,7 +98,7 @@ const T = {
       s2d: "Móvil",
       s2e: " (vertical, pensado para compartir desde el celular).",
       s3t: "Descarga el PDF",
-      s3d: "Se genera un PDF listo para guardar, enviar o publicar.",
+      s3d: "Se genera un PDF listo para guardar, enviar o publicar. Cada certificado lleva su propia huella sellada en la blockchain de Solana y un código QR: cualquiera puede escanearlo o entrar a «Verificar certificado» (en el pie de página) para comprobar que es auténtico.",
     },
     market: {
       p1a: "El ",
@@ -217,7 +217,7 @@ const T = {
       s2d: "Mobile",
       s2e: " (portrait, made for sharing from your phone).",
       s3t: "Download the PDF",
-      s3d: "A PDF is generated, ready to save, send, or publish.",
+      s3d: "A PDF is generated, ready to save, send, or publish. Every certificate carries its own fingerprint sealed on the Solana blockchain and a QR code: anyone can scan it or open “Verify certificate” (in the footer) to check it's authentic.",
     },
     market: {
       p1a: "The ",

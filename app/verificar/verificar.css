@@ -1,0 +1,145 @@
+/* ========================================
+   UMBRA — VERIFICAR CERTIFICADO (/verificar)
+   Reusa .onchain-* (globals.css) para la tarjeta y los resultados.
+   ======================================== */
+
+.verify {
+  padding: calc(var(--nav-h) + 56px) 0 96px;
+  min-height: 70vh;
+}
+
+.verify-inner {
+  max-width: 760px;
+}
+
+.verify-lead {
+  max-width: 620px;
+  margin-bottom: 28px;
+}
+
+.verify-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.verify-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.verify-input:focus { border-color: var(--border-2); }
+.verify-input::placeholder { color: var(--text-3); }
+
+.verify-notfound {
+  font-size: 0.9rem;
+  color: var(--red);
+  background: var(--red-dim);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.verify-card { margin-bottom: 28px; }
+
+.verify-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.verify-name {
+  font-size: 1.15rem;
+  color: var(--text);
+  margin: 4px 0;
+}
+.verify-name strong { font-weight: 600; }
+
+.verify-meta {
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+.verify-meta code {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.verify-steps-title { margin-bottom: 10px; }
+
+.verify-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.verify-steps li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 0.86rem;
+  color: var(--text-2);
+}
+.verify-steps li::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+.verify-steps li.is-wait::before { content: "…"; color: var(--text-3); }
+.verify-steps li.is-ok::before { content: "✓"; color: var(--green); }
+.verify-steps li.is-bad::before { content: "✕"; color: var(--red); }
+.verify-steps li.is-ok { color: var(--text); }
+
+.verify-running {
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+
+.verify-proof {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+.verify-proof dt {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.verify-proof dd {
+  margin: 3px 0 0;
+}
+.verify-proof code {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.verify-how { border-top: none; padding-top: 0; }
+
+@media (max-width: 640px) {
+  .verify { padding: calc(var(--nav-h) + 32px) 0 64px; }
+  .verify-form { flex-direction: column; }
+  .verify-head .onchain-net { display: none; }
+}
+.verify-wallet {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-3);
+}
