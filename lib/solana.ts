@@ -52,18 +52,44 @@ export const SOLANA_CLUSTER: SolanaCluster =
     : "devnet"
 
 /**
- * Wallet OFICIAL que firma los sellos de Umbra. Verificar sólo el memo no
- * basta (cualquiera podría escribir el mismo texto desde otra wallet): la
- * transacción además debe estar firmada por esta dirección.
+ * Wallets OFICIALES que firman los sellos de Umbra, una por red. Verificar
+ * sólo el memo no basta (cualquiera podría escribir el mismo texto desde otra
+ * wallet): la transacción además debe estar firmada por la wallet de su red.
  */
-export const UMBRA_ATTESTER_WALLET =
-  process.env.NEXT_PUBLIC_SOLANA_ATTESTER?.trim() || "BDsEnYJ525WNMv9t2oBiAf8r3svqvraTcCP52nkAmWZg"
+export const ATTESTER_WALLETS: Record<SolanaCluster, string> = {
+  devnet: "BDsEnYJ525WNMv9t2oBiAf8r3svqvraTcCP52nkAmWZg",
+  "mainnet-beta": "6xBKjoTBabB5zrboXweLd6N14T87vcD5aq1mFxGTNutK",
+}
 
-/** RPC público para leer de la red elegida. */
-export function rpcEndpoint(cluster: SolanaCluster = SOLANA_CLUSTER): string {
+/** Wallet oficial de una red. */
+export function attesterWallet(cluster: SolanaCluster = SOLANA_CLUSTER): string {
+  return ATTESTER_WALLETS[cluster]
+}
+
+/** Wallet oficial de devnet (compatibilidad con código y pruebas previas). */
+export const UMBRA_ATTESTER_WALLET = ATTESTER_WALLETS.devnet
+
+/** Nombre legible de la red. */
+export function clusterLabel(cluster: SolanaCluster | null | undefined): string {
+  return cluster === "mainnet-beta" ? "Solana mainnet" : "Solana devnet"
+}
+
+/**
+ * RPCs públicos para LEER desde el navegador, en orden de preferencia. El RPC
+ * oficial de mainnet (api.mainnet-beta.solana.com) responde 403 a cualquier
+ * petición con cabecera Origin, o sea, desde un navegador: por eso en mainnet
+ * se usa PublicNode (CORS abierto) y el oficial queda como respaldo (sirve
+ * fuera del navegador, p. ej. en las pruebas).
+ */
+export function rpcEndpoints(cluster: SolanaCluster = SOLANA_CLUSTER): string[] {
   return cluster === "mainnet-beta"
-    ? "https://api.mainnet-beta.solana.com"
-    : "https://api.devnet.solana.com"
+    ? ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"]
+    : ["https://api.devnet.solana.com"]
+}
+
+/** RPC principal para leer de la red elegida. */
+export function rpcEndpoint(cluster: SolanaCluster = SOLANA_CLUSTER): string {
+  return rpcEndpoints(cluster)[0]
 }
 
 // ─── Riel de pagos (inerte por defecto; ver lib/pagos-solana.ts) ───────────
@@ -153,8 +179,10 @@ export async function fetchOnchainTx(
   // reintenta un par de veces con espera creciente antes de rendirse.
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, retryDelayMs * attempt))
+    const endpoints = rpcEndpoints(cluster)
     try {
-      const res = await fetcher(rpcEndpoint(cluster), {
+      // Rota entre RPCs en cada reintento.
+      const res = await fetcher(endpoints[attempt % endpoints.length], {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -204,7 +232,7 @@ export async function verifyOnchain(
   const tx = await fetchOnchainTx(att.signature, att.cluster, fetcher, retryDelayMs)
   if (tx === null) return "unreachable"
   const hash = await sha256Hex(att.snapshot)
-  const signedByUmbra = tx.signers.includes(UMBRA_ATTESTER_WALLET)
+  const signedByUmbra = tx.signers.includes(attesterWallet(att.cluster))
   return signedByUmbra && tx.memo === agentMemo(att.agentId, hash) ? "ok" : "mismatch"
 }
 
@@ -244,7 +272,7 @@ export interface CertificateCheck {
  *  2. lo compara con el hash registrado,
  *  3. lee la transacción de Solana: su memo debe ser
  *     `umbra:cert:v1:<certId>:<hash recalculado>` y debe estar firmada por la
- *     wallet oficial de Umbra (UMBRA_ATTESTER_WALLET).
+ *     wallet oficial de Umbra para esa red (ATTESTER_WALLETS).
  */
 export async function verifyCertificate(
   c: CertificateRecord,
@@ -256,7 +284,7 @@ export async function verifyCertificate(
   if (!c.signature) return { computedHash, hashMatches, memo: null, signerOk: null, result: "pending" }
   const tx = await fetchOnchainTx(c.signature, c.cluster ?? SOLANA_CLUSTER, fetcher, retryDelayMs)
   if (tx === null) return { computedHash, hashMatches, memo: null, signerOk: null, result: "unreachable" }
-  const signerOk = tx.signers.includes(UMBRA_ATTESTER_WALLET)
+  const signerOk = tx.signers.includes(attesterWallet(c.cluster ?? SOLANA_CLUSTER))
   const ok = hashMatches && signerOk && tx.memo === certMemo(c.id, computedHash)
   return { computedHash, hashMatches, memo: tx.memo, signerOk, result: ok ? "ok" : "mismatch" }
 }

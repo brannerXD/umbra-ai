@@ -58,6 +58,32 @@ cualquiera puede escribir un memo idéntico desde otra wallet.
 - `supabase/migrations/20260828120000_onchain_attestations.sql` — tabla + cron.
 - `scripts/publish-attestation.mjs` — publicación manual desde tu máquina (debug).
 
+## Redes y wallets (devnet / mainnet)
+
+La red activa se cambia SIN redesplegar, en `public.internal_config`:
+`solana_cluster` = `devnet` | `mainnet-beta`. Cada sello guarda su red, así que
+los de devnet siguen verificando después del cambio.
+
+| Red | Wallet oficial (pública) | Llave privada |
+|---|---|---|
+| devnet | `BDsEnYJ525WNMv9t2oBiAf8r3svqvraTcCP52nkAmWZg` | `internal_config.solana_attester_secret` + `scripts/.devnet-keypair.json` |
+| mainnet | `6xBKjoTBabB5zrboXweLd6N14T87vcD5aq1mFxGTNutK` | `internal_config.solana_attester_secret_mainnet` + `scripts/.mainnet-keypair.json` |
+
+Las llaves NUNCA van al repo (los .json están en .gitignore). Las direcciones
+públicas están en `ATTESTER_WALLETS` (`lib/solana.ts`): verificar exige que la
+tx la firme la wallet de su red.
+
+**Frenos de gasto en mainnet** (`_shared/solana-signer.ts`): reserva mínima de
+0.001 SOL que nunca se gasta y tope de 30 sellos por hora (agentes +
+certificados). Si se alcanza, los certificados quedan "en proceso" y el cron
+los completa después.
+
+**Lectura desde el navegador:** el RPC oficial de mainnet responde 403 a
+navegadores; `lib/solana.ts` lee por PublicNode (`solana-rpc.publicnode.com`).
+
+**Estado en vivo:** `GET /api/health` → red activa, wallet, saldo y sellos
+restantes aproximados (además valida la llave secreta de Supabase).
+
 ## Wallet firmante
 
 - Dirección pública (devnet): `BDsEnYJ525WNMv9t2oBiAf8r3svqvraTcCP52nkAmWZg`
@@ -68,8 +94,9 @@ cualquiera puede escribir un memo idéntico desde otra wallet.
   responde 503 "sin SOL" y no sella nada (el sitio sigue igual). Recargar en
   https://faucet.solana.com (red devnet).
 
-## Pasar a mainnet (más adelante)
+## Pasar a mainnet
 
-Requiere: wallet nueva fondeada con SOL real (centavos por sello), cambiar
-`CLUSTER`/`RPC` en la Edge Function y `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta`
-en Vercel. **Decisión del fundador**: implica dinero real.
+1. Enviar SOL (red **Solana**) a la wallet mainnet de arriba.
+2. `update internal_config set value='mainnet-beta' where key='solana_cluster'`.
+3. El siguiente cron sella cada agente una vez en mainnet; los certificados
+   nuevos se sellan en mainnet al emitirse.

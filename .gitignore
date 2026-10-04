@@ -30,3 +30,4 @@ Thumbs.db
 # Solana devnet (local, no commitear)
 scripts/.devnet-keypair.json
 scripts/last-attestation.json
+scripts/.mainnet-keypair.json

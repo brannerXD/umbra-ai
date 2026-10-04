@@ -7,7 +7,8 @@ import { useI18n } from "@/components/language-provider"
 import {
   type CertificateCheck,
   type CertificateRecord,
-  UMBRA_ATTESTER_WALLET,
+  attesterWallet,
+  clusterLabel,
   explorerTxUrl,
   verifyCertificate,
 } from "@/lib/solana"
@@ -164,7 +165,7 @@ export function VerificarClient({
                   {s.issuedOn} {formatFullDate(new Date(c.issuedAt), lang)}
                 </p>
               </div>
-              {c.cluster && <span className="onchain-net">Solana {c.cluster}</span>}
+              {c.cluster && <span className="onchain-net">{clusterLabel(c.cluster)}</span>}
             </div>
 
             <dl className="onchain-snap">
@@ -199,7 +200,7 @@ export function VerificarClient({
                   {s.step3}
                 </li>
                 <li className={stepState(check?.signerOk ?? null)}>
-                  {s.step4} <code className="verify-wallet">{shortAddr(UMBRA_ATTESTER_WALLET)}</code>
+                  {s.step4} <code className="verify-wallet">{shortAddr(attesterWallet(c.cluster ?? "devnet"))}</code>
                 </li>
               </ol>
             </div>

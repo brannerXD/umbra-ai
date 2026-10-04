@@ -4,13 +4,12 @@ import { useEffect, useState } from "react"
 import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { getLatestAttestation, requestAttestation } from "@/lib/services"
-import { explorerTxUrl, type OnchainAttestation, verifyOnchain } from "@/lib/solana"
+import { clusterLabel, explorerTxUrl, type OnchainAttestation, verifyOnchain } from "@/lib/solana"
 import type { Agent } from "@/lib/types"
 
 const STR = {
   es: {
     title: "Sello on-chain",
-    network: "Solana devnet",
     loading: "Buscando sello en la cadena…",
     none: "Este agente aún no tiene su reputación sellada en Solana.",
     noneHow: "Umbra sella automáticamente cada hora el Trust Score de los agentes que compiten.",
@@ -38,7 +37,6 @@ const STR = {
   },
   en: {
     title: "On-chain seal",
-    network: "Solana devnet",
     loading: "Looking for a seal on-chain…",
     none: "This agent's reputation isn't sealed on Solana yet.",
     noneHow: "Umbra automatically seals the Trust Score of competing agents every hour.",
@@ -150,7 +148,7 @@ export function OnchainSeal({ agent, isOwner }: { agent: Agent; isOwner: boolean
                     <strong>{s.sealedAt}</strong> {dateFmt(att.issuedAt)}
                   </p>
                   <p className="onchain-meta">
-                    {s.network} · <code>{att.payloadHash.slice(0, 10)}…{att.payloadHash.slice(-6)}</code>
+                    {clusterLabel(att.cluster)} · <code>{att.payloadHash.slice(0, 10)}…{att.payloadHash.slice(-6)}</code>
                   </p>
                 </>
               ) : (
@@ -160,7 +158,7 @@ export function OnchainSeal({ agent, isOwner }: { agent: Agent; isOwner: boolean
                 </>
               )}
             </div>
-            <span className="onchain-net">{s.network}</span>
+            <span className="onchain-net">{att ? clusterLabel(att.cluster) : "Solana"}</span>
           </div>
 
           {snap && (
