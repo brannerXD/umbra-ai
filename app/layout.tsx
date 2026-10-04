@@ -1,34 +1,47 @@
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata, Viewport } from "next"
-import { Fraunces, Inter, JetBrains_Mono, Jost } from "next/font/google"
+import localFont from "next/font/local"
 import type { ReactNode } from "react"
 import { Providers } from "@/components/providers"
 import "./globals.css"
 
-const inter = Inter({
+// Fuentes alojadas en el propio proyecto (app/fonts, licencia SIL OFL, subset
+// latino de Google Fonts). Antes se usaba next/font/google, que DESCARGA las
+// fuentes en cada build: un fallo de red de Google tumbaba el deploy en Vercel
+// ("Can't resolve '@vercel/turbopack-next/internal/font/google/font'"). Son
+// fuentes variables: un archivo cubre todo el rango de pesos.
+
+const inter = localFont({
+  src: "./fonts/inter-latin.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 })
 
-const fraunces = Fraunces({
+const fraunces = localFont({
+  src: "./fonts/fraunces-latin.woff2",
   variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "400 600",
+  display: "swap",
+  adjustFontFallback: "Times New Roman",
 })
 
-const jetbrains = JetBrains_Mono({
+const jetbrains = localFont({
+  src: "./fonts/jetbrains-mono-latin.woff2",
   variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "400 600",
+  display: "swap",
+  adjustFontFallback: false,
+  fallback: ["ui-monospace", "Menlo", "Consolas", "monospace"],
 })
 
 // Wordmark de marca: geométrica fina (tipo Futura), para el logotipo UMBRA
-// del hero sobre el robot. Sólo se usa el peso 300: un único archivo de fuente.
-const jost = Jost({
+// del hero sobre el robot. Sólo se usa el peso 300.
+const jost = localFont({
+  src: "./fonts/jost-300-latin.woff2",
   variable: "--font-jost",
-  subsets: ["latin"],
-  weight: ["300"],
+  weight: "300",
+  display: "swap",
 })
 
 export const metadata: Metadata = {
