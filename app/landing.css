@@ -791,3 +791,35 @@
   .landing-cta-section { padding: 56px 0 64px; }
   .landing-metric { padding: 16px 18px; }
 }
+
+/* Logo del hero cuando NO hay robot 3D (móvil/tablet táctil): misma consulta
+   que MOBILE_QUERY en components/spline-scene.tsx (mantener en par). */
+.landing-hero-logo { display: none; }
+
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  .landing-hero-logo {
+    display: block;
+    width: clamp(84px, 24vw, 128px);
+    aspect-ratio: 1 / 1;
+    margin: 0 auto 22px;
+    background-image: var(--logo-url);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    animation: hero-logo-in 1s var(--ease) both, hero-logo-float 6s ease-in-out 1s infinite;
+  }
+  .landing-hero { min-height: auto; }
+}
+
+@keyframes hero-logo-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes hero-logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-logo { animation: none; }
+}

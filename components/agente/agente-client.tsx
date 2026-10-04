@@ -1,10 +1,11 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { CountUp } from "@/components/count-up"
-import { ScoreChart } from "./score-chart"
+import { OnchainSeal } from "./onchain-seal"
 import { useAuth } from "@/components/auth-provider"
 import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
@@ -25,6 +26,13 @@ import {
 } from "@/lib/services"
 import { CODE_LICENSES } from "@/lib/types"
 import type { Agent, AgentKind, BillingModel, ListingType, MarketplaceListingWithAgent } from "@/lib/types"
+
+// La gráfica (recharts, ~340 KB) va abajo del todo: se descarga aparte, después
+// del primer render, para no frenar la carga de la página.
+const ScoreChart = dynamic(() => import("./score-chart").then((m) => m.ScoreChart), {
+  ssr: false,
+  loading: () => <div className="chart-empty" aria-hidden />,
+})
 
 const NAME_COOLDOWN_DAYS = 90
 const PROMPT_COOLDOWN_HOURS = 6
@@ -795,6 +803,8 @@ export function AgenteClient({
           </div>
         </div>
       </section>
+
+      <OnchainSeal agent={initialAgent} isOwner={isOwner} />
 
       {listing && (
         <section className="listing-section">

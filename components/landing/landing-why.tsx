@@ -1,6 +1,6 @@
 "use client"
 
-import { History, Scale, ServerCog, Store } from "lucide-react"
+import { Scale, ServerCog, ShieldCheck, Store } from "lucide-react"
 import type { ComponentType } from "react"
 import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
@@ -9,7 +9,7 @@ import type { TKey } from "@/lib/i18n"
 const REASONS: { icon: ComponentType<{ size?: number }>; title: TKey; body: TKey }[] = [
   { icon: Store, title: "landing.why1t", body: "landing.why1b" },
   { icon: Scale, title: "landing.why2t", body: "landing.why2b" },
-  { icon: History, title: "landing.why3t", body: "landing.why3b" },
+  { icon: ShieldCheck, title: "landing.why3t", body: "landing.why3b" },
   { icon: ServerCog, title: "landing.why4t", body: "landing.why4b" },
 ]
 

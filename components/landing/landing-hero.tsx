@@ -14,6 +14,8 @@ export function LandingHero() {
       <LandingSplineBg />
       <div className="container">
         <div className="landing-hero-content">
+          {/* Sin robot 3D (móvil/tablet) el logo toma su lugar como marca. */}
+          <div className="landing-hero-logo" aria-hidden />
           <Reveal className="landing-eyebrow" as="div">
             <span className="landing-eyebrow-dot" />
             <span>{t("landing.eyebrow")}</span>

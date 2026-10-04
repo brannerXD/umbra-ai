@@ -24,11 +24,11 @@ const jetbrains = JetBrains_Mono({
 })
 
 // Wordmark de marca: geométrica fina (tipo Futura), para el logotipo UMBRA
-// del hero sobre el robot. Pesos finos para el trazo delgado de la referencia.
+// del hero sobre el robot. Sólo se usa el peso 300: un único archivo de fuente.
 const jost = Jost({
   variable: "--font-jost",
   subsets: ["latin"],
-  weight: ["200", "300", "400", "500"],
+  weight: ["300"],
 })
 
 export const metadata: Metadata = {

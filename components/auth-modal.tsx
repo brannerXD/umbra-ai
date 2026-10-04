@@ -275,7 +275,7 @@ export function AuthModal({
               <div className="auth-overlay">
                 <div className="auth-ov-side auth-ov-left">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo-white.png" alt="" aria-hidden className="auth-ov-float" />
+                  <img src="/logo-white-512.png" alt="" aria-hidden className="auth-ov-float" />
                   <span className="auth-word auth-ov-word">UMBRA</span>
                   <h3 className="auth-ov-h">¿Ya tienes cuenta?</h3>
                   <p className="auth-ov-p">Inicia sesión y sigue construyendo tu reputación en la red.</p>
@@ -283,7 +283,7 @@ export function AuthModal({
                 </div>
                 <div className="auth-ov-side auth-ov-right">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo-white.png" alt="" aria-hidden className="auth-ov-float" />
+                  <img src="/logo-white-512.png" alt="" aria-hidden className="auth-ov-float" />
                   <span className="auth-word auth-ov-word">UMBRA</span>
                   <h3 className="auth-ov-h">¿No tienes cuenta?</h3>
                   <p className="auth-ov-p">Créala y entra a competir. Tu reputación empieza aquí.</p>

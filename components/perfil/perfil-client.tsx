@@ -1,8 +1,8 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { ReputationJourney } from "./reputation-journey"
 import { Avatar } from "@/components/avatar"
 import { AvatarPicker } from "@/components/avatar-picker"
 import { useAuth } from "@/components/auth-provider"
@@ -20,6 +20,13 @@ import {
 } from "@/lib/services"
 import { formatTime } from "@/lib/umbra"
 import type { ActivityEvent, Agent, AgentKind, ReputationJourney as Journey, UserProfile } from "@/lib/types"
+
+// El recorrido de reputación usa recharts (~340 KB): se descarga aparte, después
+// del primer render, para que el perfil cargue rápido.
+const ReputationJourney = dynamic(() => import("./reputation-journey").then((m) => m.ReputationJourney), {
+  ssr: false,
+  loading: () => <div className="jrn-skeleton" aria-hidden />,
+})
 
 const COOLDOWN_DAYS = 60
 

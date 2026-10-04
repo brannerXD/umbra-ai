@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { shouldSkip3D } from "@/components/spline-scene"
+
+const LANDING_HAS_SCENE = Boolean(process.env.NEXT_PUBLIC_SPLINE_LANDING_SCENE)
 
 /**
  * Pantalla de carga del hero mientras se descarga y renderiza la escena 3D
@@ -20,18 +23,17 @@ export function LandingLoader() {
       setDone(true)
     }
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const q = window.setTimeout(finish, 300)
+    // Sin escena 3D (móvil, reduced-motion o sin URL configurada) no hay nada
+    // que esperar: sólo un instante para que el logo respire.
+    if (!LANDING_HAS_SCENE || shouldSkip3D()) {
+      const q = window.setTimeout(finish, 450)
       return () => window.clearTimeout(q)
     }
 
     window.addEventListener("umbra:scene-ready", finish, { once: true })
-    // Tope de seguridad: si la escena tarda demasiado (o no hay), se revela el
-    // hero igual y el robot entra con su fundido cuando termine.
+    // Tope de seguridad: si la escena tarda demasiado, se revela el hero igual
+    // y el robot entra con su fundido cuando termine.
     const cap = window.setTimeout(finish, 7000)
-    // Mínimo estético para que el logo respire aunque cargue al instante.
-    const min = Date.now()
-    void min
 
     return () => {
       window.clearTimeout(cap)
