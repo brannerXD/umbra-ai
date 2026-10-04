@@ -7,7 +7,7 @@
 import { supabase } from "./supabase"
 import { formatListingPrice, getCategoryLabel } from "./umbra"
 import type { Lang } from "./i18n"
-import type { AttestationPayload, OnchainAttestation } from "./solana"
+import { parseCertificateQuery, type AttestationPayload, type CertificateRecord, type OnchainAttestation } from "./solana"
 import type {
   ActivityEvent,
   Agent,
@@ -1195,6 +1195,18 @@ interface CertificateIssuanceRow {
   wins: number
   score: number
   issued_at: string
+  cert_hash: string | null
+  onchain_signature: string | null
+  onchain_cluster: string | null
+  onchain_wallet: string | null
+  onchain_at: string | null
+}
+
+const CERT_COLS =
+  "id, agent_id, format, agent_name, avg_score, comps_count, wins, score, issued_at, cert_hash, onchain_signature, onchain_cluster, onchain_wallet, onchain_at"
+
+function clusterOf(v: string | null): "devnet" | "mainnet-beta" | null {
+  return v === "mainnet-beta" ? "mainnet-beta" : v === "devnet" ? "devnet" : null
 }
 
 function mapCertificateIssuance(row: CertificateIssuanceRow): CertificateIssuance {
@@ -1208,6 +1220,29 @@ function mapCertificateIssuance(row: CertificateIssuanceRow): CertificateIssuanc
     wins: row.wins,
     score: row.score,
     issuedAt: new Date(row.issued_at),
+    certHash: row.cert_hash ?? null,
+    onchainSignature: row.onchain_signature ?? null,
+    onchainCluster: clusterOf(row.onchain_cluster ?? null),
+  }
+}
+
+/** Fila → datos públicos para VERIFICAR (fecha cruda, tal como la usa el sello). */
+function toCertificateRecord(row: CertificateIssuanceRow): CertificateRecord {
+  return {
+    id: row.id,
+    agentId: row.agent_id,
+    agentName: row.agent_name,
+    score: row.score,
+    wins: row.wins,
+    comps: row.comps_count,
+    avgScore: Number(row.avg_score),
+    format: row.format,
+    issuedAt: row.issued_at,
+    certHash: row.cert_hash,
+    signature: row.onchain_signature,
+    cluster: clusterOf(row.onchain_cluster),
+    wallet: row.onchain_wallet,
+    onchainAt: row.onchain_at,
   }
 }
 
@@ -1231,7 +1266,7 @@ export async function issueCertificate(agent: Agent, format: CertificateFormat):
 export async function getCertificateIssuances(agentId: string): Promise<CertificateIssuance[]> {
   const { data, error } = await supabase
     .from("certificate_issuances")
-    .select("*")
+    .select(CERT_COLS)
     .eq("agent_id", agentId)
     .order("issued_at", { ascending: false })
 
@@ -1505,4 +1540,40 @@ export async function requestAttestation(
   if (!body?.ok) return { ok: false, message: body?.message ?? "No se pudo contactar el servicio de sellado." }
   const status = body.results?.[0]?.status as "sellado" | "sin-cambios" | "espera" | "error" | undefined
   return { ok: status !== "error", status }
+}
+
+// ── SELLO ON-CHAIN DE CERTIFICADOS ───────
+
+/**
+ * Busca un certificado para verificarlo. Acepta su ID, su hash SHA-256 o una
+ * URL de verificación que contenga cualquiera de los dos.
+ */
+export async function findCertificate(query: string): Promise<CertificateRecord | null> {
+  const parsed = parseCertificateQuery(query)
+  if (!parsed) return null
+  const base = supabase.from("certificate_issuances").select(CERT_COLS)
+  const req = "id" in parsed ? base.eq("id", parsed.id) : base.eq("cert_hash", parsed.hash)
+  const { data, error } = await req.limit(1).maybeSingle()
+  if (error || !data) return null
+  return toCertificateRecord(data as unknown as CertificateIssuanceRow)
+}
+
+/**
+ * Sella en Solana un certificado recién emitido (idempotente: si ya estaba
+ * sellado devuelve el sello existente). Devuelve null si la red falla; en ese
+ * caso el cron horario lo reintenta.
+ */
+export async function anchorCertificate(
+  certId: string,
+): Promise<{ hash: string; signature: string } | null> {
+  try {
+    const { data } = await supabase.functions.invoke("attest-certificate", { body: { certId } })
+    const r = (data as { results?: { status: string; hash?: string; signature?: string }[] } | null)?.results?.[0]
+    if (r && (r.status === "sellado" || r.status === "existente") && r.hash && r.signature) {
+      return { hash: r.hash, signature: r.signature }
+    }
+  } catch (e) {
+    console.error("anchorCertificate failed", e)
+  }
+  return null
 }

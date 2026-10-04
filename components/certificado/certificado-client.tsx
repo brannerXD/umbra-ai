@@ -37,6 +37,10 @@ const T = {
     mobile: "Móvil",
     mobileHint: "Vertical · se ve bien en el celular",
     cancel: "Cancelar",
+    issuedTitle: "Certificados emitidos",
+    issuedSub: "Cada certificado descargado tiene su propia huella sellada en Solana. Cualquiera puede comprobarla.",
+    sealPending: "Sello en proceso",
+    verify: "Verificar →",
   },
   en: {
     back: "\u2190 Back to agent",
@@ -63,6 +67,10 @@ const T = {
     mobile: "Mobile",
     mobileHint: "Portrait · looks good on a phone",
     cancel: "Cancel",
+    issuedTitle: "Issued certificates",
+    issuedSub: "Every downloaded certificate has its own fingerprint sealed on Solana. Anyone can check it.",
+    sealPending: "Seal in progress",
+    verify: "Verify →",
   },
 } as const
 
@@ -186,6 +194,26 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
           {s.disclaimer}
         </Reveal>
       </section>
+
+      {issuances.length > 0 && (
+        <section className="container cert-issued">
+          <h2 className="section-title-sm">{s.issuedTitle}</h2>
+          <p className="cert-issued-sub">{s.issuedSub}</p>
+          <ul className="cert-issued-list">
+            {issuances.slice(0, 5).map((iss) => (
+              <li key={iss.id}>
+                <span className="cert-issued-date">{formatFullDate(iss.issuedAt, lang)}</span>
+                <code className="cert-issued-hash">
+                  {iss.certHash ? `${iss.certHash.slice(0, 12)}…${iss.certHash.slice(-8)}` : s.sealPending}
+                </code>
+                <Link href={`/verificar?c=${iss.id}`} className="onchain-link">
+                  {s.verify}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Prueba pública e independiente: el Trust Score sellado en Solana. */}
       <OnchainSeal agent={agent} isOwner={false} />

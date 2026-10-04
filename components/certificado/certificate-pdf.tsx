@@ -1,11 +1,10 @@
 import { readFileSync } from "fs"
 import { join } from "path"
-import { Circle, Document, Image, Page, Polyline, StyleSheet, Svg, Text, View } from "@react-pdf/renderer"
+import { Circle, Document, Font, Image, Page, Polyline, StyleSheet, Svg, Text, View } from "@react-pdf/renderer"
 import type { Style } from "@react-pdf/types"
 import type { Agent, CertificateIssuance } from "@/lib/types"
 import { SITE_HOST, formatFullDate, getCategoryLabel } from "@/lib/umbra"
 import type { Lang } from "@/lib/i18n"
-import type { OnchainAttestation } from "@/lib/solana"
 
 const BG = "#0A0A0A"
 const SURFACE = "#161616"
@@ -14,6 +13,11 @@ const TEXT_2 = "#A8A8A0"
 const TEXT_3 = "#6A6A64"
 const BORDER = "#2A2A2A"
 const BORDER_2 = "#3A3A3A"
+
+// Sin separación silábica: react-pdf partía la firma de la transacción con un
+// guion ("…EFo-pLGx…"), y base58 no tiene guiones — copiada del papel quedaba
+// inválida. Las palabras largas ahora saltan de línea enteras.
+Font.registerHyphenationCallback((word) => [word])
 
 const LOGO_SRC = `data:image/png;base64,${readFileSync(join(process.cwd(), "public", "logo-white.png")).toString("base64")}`
 
@@ -163,6 +167,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 1.5,
   },
+  qrBox: {
+    position: "absolute",
+    right: 18,
+    bottom: 18,
+    alignItems: "center",
+  },
+  qr: {
+    width: 58,
+    height: 58,
+  },
+  qrLabel: {
+    marginTop: 4,
+    fontFamily: "Courier",
+    fontSize: 5.5,
+    letterSpacing: 1,
+    color: TEXT_3,
+    textTransform: "uppercase",
+  },
   footer: {
     position: "absolute",
     bottom: 16,
@@ -188,7 +210,10 @@ const T = {
     statAvg: "Promedio /100",
     chart: "Evolución del score",
     signature: "Firma digital · Autoridad verificadora de la red",
-    onchain: "Sello on-chain · Solana devnet · ",
+    certNo: "Certificado N.º",
+    sealed: "Sellado en Solana devnet",
+    pending: "Sello en Solana en proceso — verifícalo en el enlace de abajo",
+    scan: "Verificar",
     disclaimer:
       "Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del historial real de competencias del agente en la red. No es una promesa de resultados futuros.",
   },
@@ -201,7 +226,10 @@ const T = {
     statAvg: "Average /100",
     chart: "Score evolution",
     signature: "Digital signature · Verifying authority of the network",
-    onchain: "On-chain seal · Solana devnet · ",
+    certNo: "Certificate No.",
+    sealed: "Sealed on Solana devnet",
+    pending: "Solana seal in progress — verify it at the link below",
+    scan: "Verify",
     disclaimer:
       "This certificate reflects data verified by Umbra at the time of issuance, calculated from the agent's real competition history on the network. It is not a promise of future results.",
   },
@@ -211,33 +239,46 @@ interface CertificatePdfProps {
   agent: Agent
   issuance: CertificateIssuance
   lang?: Lang
-  /** Último sello del Trust Score en Solana, si existe. */
-  onchain?: OnchainAttestation | null
+  /** Sello propio del certificado en Solana + QR a /verificar. */
+  seal?: CertSeal
+}
+
+/** Sello on-chain del certificado. `hash`/`signature` null = aún pendiente. */
+export interface CertSeal {
+  hash: string | null
+  signature: string | null
+  /** QR (data URL PNG) que apunta a la página pública de verificación. */
+  qr: string | null
+}
+
+/** URL pública donde cualquiera verifica este certificado. */
+export function verifyUrl(certId: string): string {
+  return `${SITE_HOST}/verificar?c=${certId}`
 }
 
 /**
- * Bloque del sello on-chain. Va la firma COMPLETA de la transacción y el hash:
- * acortados no servirían para verificar desde una copia impresa.
+ * Bloque del sello del certificado. Va el hash y la firma COMPLETOS de la
+ * transacción: acortados no servirían para verificar desde una copia impresa.
  */
-function OnchainLines({
-  onchain,
-  label,
-  lang,
+function SealLines({
+  certId,
+  seal,
+  s,
   style,
 }: {
-  onchain: OnchainAttestation
-  label: string
-  lang: Lang
+  certId: string
+  seal: CertSeal
+  s: (typeof T)[Lang]
   style: Style
 }) {
   return (
     <View style={{ alignItems: "center", marginTop: 8, width: "100%" }}>
       <Text style={style}>
-        {label}
-        {formatFullDate(new Date(onchain.issuedAt), lang)}
+        {s.certNo} {certId}
       </Text>
-      <Text style={style}>tx {onchain.signature}</Text>
-      <Text style={style}>sha256 {onchain.payloadHash}</Text>
+      {seal.hash && <Text style={style}>sha256 {seal.hash}</Text>}
+      <Text style={style}>{seal.signature ? s.sealed : s.pending}</Text>
+      {seal.signature && <Text style={style}>tx {seal.signature}</Text>}
     </View>
   )
 }
@@ -255,7 +296,7 @@ function buildSparkline(values: number[], width: number, height: number) {
   return { points, dots }
 }
 
-export function CertificatePdf({ agent, issuance, lang = "es", onchain }: CertificatePdfProps) {
+export function CertificatePdf({ agent, issuance, lang = "es", seal }: CertificatePdfProps) {
   const s = T[lang]
   const chartW = 280
   const chartH = 54
@@ -311,7 +352,7 @@ export function CertificatePdf({ agent, issuance, lang = "es", onchain }: Certif
             )}
 
             <Text style={styles.disclaimer}>{s.disclaimer}</Text>
-            {onchain && <OnchainLines onchain={onchain} label={s.onchain} lang={lang} style={styles.onchain} />}
+            {seal && <SealLines certId={issuance.id} seal={seal} s={s} style={styles.onchain} />}
 
             <View style={styles.signatureBlock}>
               <Text style={styles.signatureMark}>Umbra Agentes</Text>
@@ -320,7 +361,14 @@ export function CertificatePdf({ agent, issuance, lang = "es", onchain }: Certif
             </View>
           </View>
 
-          <Text style={styles.footer}>{SITE_HOST}/certificado?id={agent.id}</Text>
+          {seal?.qr && (
+            <View style={styles.qrBox}>
+              <Image src={seal.qr} style={styles.qr} />
+              <Text style={styles.qrLabel}>{s.scan}</Text>
+            </View>
+          )}
+
+          <Text style={styles.footer}>{verifyUrl(issuance.id)}</Text>
         </View>
       </Page>
     </Document>
@@ -502,9 +550,25 @@ const mstyles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 1.5,
   },
+  qrBox: {
+    alignItems: "center",
+    marginTop: 14,
+  },
+  qr: {
+    width: 70,
+    height: 70,
+  },
+  qrLabel: {
+    marginTop: 4,
+    fontFamily: "Courier",
+    fontSize: 6,
+    letterSpacing: 1,
+    color: TEXT_3,
+    textTransform: "uppercase",
+  },
 })
 
-export function CertificateMobilePdf({ agent, issuance, lang = "es", onchain }: CertificatePdfProps) {
+export function CertificateMobilePdf({ agent, issuance, lang = "es", seal }: CertificatePdfProps) {
   const s = T[lang]
   const chartW = 300
   const chartH = 60
@@ -562,15 +626,22 @@ export function CertificateMobilePdf({ agent, issuance, lang = "es", onchain }: 
           <Text style={mstyles.disclaimer}>
             {s.disclaimer}
           </Text>
-          {onchain && <OnchainLines onchain={onchain} label={s.onchain} lang={lang} style={mstyles.onchain} />}
+          {seal && <SealLines certId={issuance.id} seal={seal} s={s} style={mstyles.onchain} />}
 
           {/* Firma — al final del documento */}
+          {seal?.qr && (
+            <View style={mstyles.qrBox}>
+              <Image src={seal.qr} style={mstyles.qr} />
+              <Text style={mstyles.qrLabel}>{s.scan}</Text>
+            </View>
+          )}
+
           <View style={mstyles.signatureBlock}>
             <View style={mstyles.signatureDivider} />
             <Text style={mstyles.signatureMark}>Umbra Agentes</Text>
             <View style={mstyles.signatureLine} />
             <Text style={mstyles.signatureCaption}>{s.signature}</Text>
-            <Text style={mstyles.footer}>{SITE_HOST}/certificado?id={agent.id}</Text>
+            <Text style={mstyles.footer}>{verifyUrl(issuance.id)}</Text>
           </View>
         </View>
       </Page>

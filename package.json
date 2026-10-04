@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/unit/**/*.test.ts\"",
+    "test:chain": "node --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/integration/**/*.test.ts\""
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -17,6 +19,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "qrcode": "^1.5.4",
     "react": "^19",
     "react-dom": "^19",
     "recharts": "^3.8.1",
@@ -28,6 +31,7 @@
     "@solana/web3.js": "^1.98.4",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^24",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.39.4",

@@ -24,12 +24,37 @@ Hoy corre en **devnet** (gratis, sin dinero real).
    lee la tx directo del RPC de Solana, recalcula el hash del snapshot y los
    compara. Umbra no interviene en la verificación.
 
+## Certificados (cada uno con su propio sello)
+
+Cada certificado PDF descargado (`certificate_issuances`) se sella en Solana al
+emitirse: `app/certificado/pdf/route.tsx` llama a la Edge Function
+`attest-certificate`, que publica el memo `umbra:cert:v1:<certId>:<sha256>` y
+guarda `cert_hash` + `onchain_signature`. El PDF imprime N.º de certificado,
+hash, firma de la transacción y un **QR** a `/verificar?c=<certId>`.
+Si la red falla, el PDF sale con "sello en proceso" y el cron lo completa.
+
+`/verificar` (pública) acepta ID, hash o la URL del QR y comprueba en el
+navegador: (1) hash recalculado desde los datos, (2) = hash registrado,
+(3) = memo en Solana, (4) la tx la firmó la wallet oficial de Umbra
+(`UMBRA_ATTESTER_WALLET` en `lib/solana.ts`). El paso 4 evita suplantaciones:
+cualquiera puede escribir un memo idéntico desde otra wallet.
+
+## Pruebas
+
+- `npm test` — unitarias (sin red): formato canónico con **vectores dorados
+  reales** de producción, reintentos del RPC, detección de manipulación campo
+  a campo y de suplantación de wallet.
+- `npm run test:chain` — integración contra producción (anon key): todos los
+  sellos verifican en Solana, seguridad de las Edge Functions (401/400/404/405,
+  idempotencia) y permisos de la base (anon no puede escribir ni leer la llave).
+
 ## Piezas
 
-- `lib/solana.ts` — formato canónico, hash (Web Crypto), lectura del memo
-  on-chain y verificación. Sin dependencias, seguro para el bundle.
-- `supabase/functions/attest-agents/index.ts` — firma y envía (mismo formato que
-  `lib/solana.ts`; mantener en par).
+- `supabase/functions/_shared/umbra-attestation.ts` — **fuente única** del
+  formato canónico y el hash (la usan Edge Functions, web y pruebas).
+- `supabase/functions/_shared/solana-signer.ts` — wallet + envío del memo.
+- `lib/solana.ts` — verificación desde el navegador (RPC público, sin librerías).
+- `supabase/functions/attest-agents` y `attest-certificate` — firman y publican.
 - `supabase/migrations/20260828120000_onchain_attestations.sql` — tabla + cron.
 - `scripts/publish-attestation.mjs` — publicación manual desde tu máquina (debug).
 
