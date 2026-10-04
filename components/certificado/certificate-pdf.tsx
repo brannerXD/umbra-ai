@@ -1,9 +1,11 @@
 import { readFileSync } from "fs"
 import { join } from "path"
 import { Circle, Document, Image, Page, Polyline, StyleSheet, Svg, Text, View } from "@react-pdf/renderer"
+import type { Style } from "@react-pdf/types"
 import type { Agent, CertificateIssuance } from "@/lib/types"
-import { formatFullDate, getCategoryLabel } from "@/lib/umbra"
+import { SITE_HOST, formatFullDate, getCategoryLabel } from "@/lib/umbra"
 import type { Lang } from "@/lib/i18n"
+import type { OnchainAttestation } from "@/lib/solana"
 
 const BG = "#0A0A0A"
 const SURFACE = "#161616"
@@ -154,6 +156,13 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
+  onchain: {
+    fontFamily: "Courier",
+    fontSize: 6,
+    color: TEXT_3,
+    textAlign: "center",
+    lineHeight: 1.5,
+  },
   footer: {
     position: "absolute",
     bottom: 16,
@@ -179,6 +188,7 @@ const T = {
     statAvg: "Promedio /100",
     chart: "Evolución del score",
     signature: "Firma digital · Autoridad verificadora de la red",
+    onchain: "Sello on-chain · Solana devnet · ",
     disclaimer:
       "Este certificado refleja datos verificados por Umbra al momento de su emisión, calculados a partir del historial real de competencias del agente en la red. No es una promesa de resultados futuros.",
   },
@@ -191,6 +201,7 @@ const T = {
     statAvg: "Average /100",
     chart: "Score evolution",
     signature: "Digital signature · Verifying authority of the network",
+    onchain: "On-chain seal · Solana devnet · ",
     disclaimer:
       "This certificate reflects data verified by Umbra at the time of issuance, calculated from the agent's real competition history on the network. It is not a promise of future results.",
   },
@@ -200,6 +211,35 @@ interface CertificatePdfProps {
   agent: Agent
   issuance: CertificateIssuance
   lang?: Lang
+  /** Último sello del Trust Score en Solana, si existe. */
+  onchain?: OnchainAttestation | null
+}
+
+/**
+ * Bloque del sello on-chain. Va la firma COMPLETA de la transacción y el hash:
+ * acortados no servirían para verificar desde una copia impresa.
+ */
+function OnchainLines({
+  onchain,
+  label,
+  lang,
+  style,
+}: {
+  onchain: OnchainAttestation
+  label: string
+  lang: Lang
+  style: Style
+}) {
+  return (
+    <View style={{ alignItems: "center", marginTop: 8, width: "100%" }}>
+      <Text style={style}>
+        {label}
+        {formatFullDate(new Date(onchain.issuedAt), lang)}
+      </Text>
+      <Text style={style}>tx {onchain.signature}</Text>
+      <Text style={style}>sha256 {onchain.payloadHash}</Text>
+    </View>
+  )
 }
 
 function buildSparkline(values: number[], width: number, height: number) {
@@ -215,7 +255,7 @@ function buildSparkline(values: number[], width: number, height: number) {
   return { points, dots }
 }
 
-export function CertificatePdf({ agent, issuance, lang = "es" }: CertificatePdfProps) {
+export function CertificatePdf({ agent, issuance, lang = "es", onchain }: CertificatePdfProps) {
   const s = T[lang]
   const chartW = 280
   const chartH = 54
@@ -271,6 +311,7 @@ export function CertificatePdf({ agent, issuance, lang = "es" }: CertificatePdfP
             )}
 
             <Text style={styles.disclaimer}>{s.disclaimer}</Text>
+            {onchain && <OnchainLines onchain={onchain} label={s.onchain} lang={lang} style={styles.onchain} />}
 
             <View style={styles.signatureBlock}>
               <Text style={styles.signatureMark}>Umbra Agentes</Text>
@@ -279,7 +320,7 @@ export function CertificatePdf({ agent, issuance, lang = "es" }: CertificatePdfP
             </View>
           </View>
 
-          <Text style={styles.footer}>umbra-agents.com/certificado?id={agent.id}</Text>
+          <Text style={styles.footer}>{SITE_HOST}/certificado?id={agent.id}</Text>
         </View>
       </Page>
     </Document>
@@ -454,9 +495,16 @@ const mstyles = StyleSheet.create({
     color: TEXT_3,
     textAlign: "center",
   },
+  onchain: {
+    fontFamily: "Courier",
+    fontSize: 5.2,
+    color: TEXT_3,
+    textAlign: "center",
+    lineHeight: 1.5,
+  },
 })
 
-export function CertificateMobilePdf({ agent, issuance, lang = "es" }: CertificatePdfProps) {
+export function CertificateMobilePdf({ agent, issuance, lang = "es", onchain }: CertificatePdfProps) {
   const s = T[lang]
   const chartW = 300
   const chartH = 60
@@ -514,6 +562,7 @@ export function CertificateMobilePdf({ agent, issuance, lang = "es" }: Certifica
           <Text style={mstyles.disclaimer}>
             {s.disclaimer}
           </Text>
+          {onchain && <OnchainLines onchain={onchain} label={s.onchain} lang={lang} style={mstyles.onchain} />}
 
           {/* Firma — al final del documento */}
           <View style={mstyles.signatureBlock}>
@@ -521,7 +570,7 @@ export function CertificateMobilePdf({ agent, issuance, lang = "es" }: Certifica
             <Text style={mstyles.signatureMark}>Umbra Agentes</Text>
             <View style={mstyles.signatureLine} />
             <Text style={mstyles.signatureCaption}>{s.signature}</Text>
-            <Text style={mstyles.footer}>umbra-agents.com/certificado?id={agent.id}</Text>
+            <Text style={mstyles.footer}>{SITE_HOST}/certificado?id={agent.id}</Text>
           </View>
         </View>
       </Page>

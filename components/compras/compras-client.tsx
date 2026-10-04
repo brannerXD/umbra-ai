@@ -8,7 +8,7 @@ import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { getCodeDownloadUrl, getPurchasedAgents, issueLicense } from "@/lib/services"
 import { safeExternalUrl } from "@/lib/utils"
-import { formatTime } from "@/lib/umbra"
+import { SITE_URL, formatTime } from "@/lib/umbra"
 import type { AgentVersion, PurchasedAgent } from "@/lib/types"
 
 type Tab = "readme" | "docs" | "deps" | "versiones"
@@ -140,7 +140,7 @@ export function ComprasClient() {
   const [copied, setCopied] = useState(false)
 
   // El ejemplo de curl muestra el dominio real desde el que abrio la pagina.
-  const apiBase = typeof window === "undefined" ? "https://umbra-agents.com" : window.location.origin
+  const apiBase = typeof window === "undefined" ? SITE_URL : window.location.origin
 
   const load = useCallback(() => {
     if (!user) {
