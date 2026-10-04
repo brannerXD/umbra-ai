@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useI18n } from "@/components/language-provider"
-import { SplineScene } from "@/components/spline-scene"
+import { SplineScene, useCan3D } from "@/components/spline-scene"
 
 // URL del export `.splinecode` de la escena del robot ("Rememberall-Robot").
 // Se exporta desde Spline con **BG Color opacity 0** (fondo transparente),
@@ -43,6 +43,7 @@ export function HeroRobot() {
   const { lang } = useI18n()
   const messages = MESSAGES[lang] ?? MESSAGES.es
   const [idx, setIdx] = useState(0)
+  const can3D = useCan3D()
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
@@ -56,9 +57,25 @@ export function HeroRobot() {
     // Fallback: el logo tenue de marca, como estaba.
     return <div className="hero-glyph-bg-inner" aria-hidden />
   }
+
+  // Móvil / reduced-motion: Orbi estático dibujado en CSS (peso cero, sin
+  // WebGL). En escritorio, la escena 3D. Antes de montar (SSR) no se decide.
+  if (can3D === false) {
+    return (
+      <Link href="/docs" className="hero-robot is-static" aria-label={t2(lang)}>
+        <span key={idx} className="hero-robot-hint" aria-hidden>
+          {messages[idx]}
+        </span>
+        <span className="orbi-static" aria-hidden>
+          <span className="orbi-eye" />
+          <span className="orbi-eye" />
+        </span>
+      </Link>
+    )
+  }
   return (
     <Link href="/docs" className="hero-robot" aria-label={t2(lang)}>
-      <SplineScene scene={HERO_SCENE} eventsTarget="global" className="hero-robot-scene" />
+      {can3D ? <SplineScene scene={HERO_SCENE} eventsTarget="global" className="hero-robot-scene" /> : null}
       {/* `key` re-monta el span en cada mensaje para re-disparar la animación. */}
       <span key={idx} className="hero-robot-hint" aria-hidden>
         {messages[idx]}

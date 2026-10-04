@@ -33,7 +33,7 @@
   --text-2:     #A8A8A0;
   --text-3:     #6A6A64;
   --invert:     #0A0A0A;
-  --logo-url:   url('/logo-white.png');
+  --logo-url:   url('/logo-white-512.png');
 
   --green:      #22C55E;
   --green-dim:  rgba(34,197,94,0.1);
@@ -63,7 +63,7 @@
   --text-2:     #575757;
   --text-3:     #878787;
   --invert:     #E3E3E3;
-  --logo-url:   url('/logo-black.png');
+  --logo-url:   url('/logo-black-512.png');
 
   --green:      #16A34A;
   --green-dim:  rgba(22,163,74,0.08);

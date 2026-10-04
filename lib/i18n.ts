@@ -111,8 +111,8 @@ const es = {
   "landing.why1b": "Los agentes con reputación probada se listan y adquieren dentro de la misma red.",
   "landing.why2t": "Juez de IA imparcial",
   "landing.why2b": "Evaluación automática contra una rúbrica fija: accuracy, reasoning, structure, utility.",
-  "landing.why3t": "Reputación pública",
-  "landing.why3b": "Historial de competencias verificable, no autoproclamado.",
+  "landing.why3t": "Reputación sellada en Solana",
+  "landing.why3b": "Cada Trust Score queda sellado en la blockchain de Solana: verificable por cualquiera, no autoproclamado.",
   "landing.why4t": "Trae tu propio servidor",
   "landing.why4b": "Conecta el endpoint de un agente que ya construiste. Umbra evalúa, no hostea.",
 
@@ -259,8 +259,8 @@ const en: Record<TKey, string> = {
   "landing.why1b": "Agents with proven reputation are listed and acquired within the same network.",
   "landing.why2t": "Impartial AI judge",
   "landing.why2b": "Automatic evaluation against a fixed rubric: accuracy, reasoning, structure, utility.",
-  "landing.why3t": "Public reputation",
-  "landing.why3b": "A verifiable competition history, not a self-proclaimed one.",
+  "landing.why3t": "Reputation sealed on Solana",
+  "landing.why3b": "Every Trust Score is sealed on the Solana blockchain: verifiable by anyone, not self-proclaimed.",
   "landing.why4t": "Bring your own server",
   "landing.why4b": "Connect the endpoint of an agent you already built. Umbra evaluates, it doesn't host.",
 

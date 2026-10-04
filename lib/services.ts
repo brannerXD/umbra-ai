@@ -7,6 +7,7 @@
 import { supabase } from "./supabase"
 import { formatListingPrice, getCategoryLabel } from "./umbra"
 import type { Lang } from "./i18n"
+import type { AttestationPayload, OnchainAttestation } from "./solana"
 import type {
   ActivityEvent,
   Agent,
@@ -1448,4 +1449,60 @@ export async function getMyJourney(): Promise<ReputationJourney | null> {
       score: 0, competencias: 0, victorias: 0, mejor: 0, agentes: 0,
     },
   }
+}
+
+// ── SELLO ON-CHAIN (SOLANA) ──────────────
+
+interface AttestationRow {
+  agent_id: string
+  cluster: string
+  payload_hash: string
+  signature: string
+  wallet: string
+  snapshot: AttestationPayload
+  issued_at: string
+}
+
+/** Último sello on-chain del Trust Score de un agente (o null si no tiene). */
+export async function getLatestAttestation(agentId: string): Promise<OnchainAttestation | null> {
+  const { data, error } = await supabase
+    .from("onchain_attestations")
+    .select("agent_id, cluster, payload_hash, signature, wallet, snapshot, issued_at")
+    .eq("agent_id", agentId)
+    .order("issued_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  const row = data as unknown as AttestationRow
+  return {
+    agentId: row.agent_id,
+    cluster: row.cluster === "mainnet-beta" ? "mainnet-beta" : "devnet",
+    payloadHash: row.payload_hash,
+    signature: row.signature,
+    wallet: row.wallet,
+    snapshot: row.snapshot,
+    issuedAt: row.issued_at,
+  }
+}
+
+/**
+ * Pide sellar YA el Trust Score de un agente propio en Solana. La Edge Function
+ * valida que el usuario sea el dueño, firma la tx y registra el sello.
+ */
+export async function requestAttestation(
+  agentId: string,
+): Promise<{ ok: boolean; status?: "sellado" | "sin-cambios" | "espera" | "error"; message?: string }> {
+  const { data, error } = await supabase.functions.invoke("attest-agents", { body: { agentId } })
+  let body = data as { ok?: boolean; message?: string; results?: { status: string }[] } | null
+  if (error && !body) {
+    // En respuestas no-2xx el cuerpo viene en error.context (FunctionsHttpError).
+    try {
+      body = await (error as unknown as { context: Response }).context.json()
+    } catch {
+      body = null
+    }
+  }
+  if (!body?.ok) return { ok: false, message: body?.message ?? "No se pudo contactar el servicio de sellado." }
+  const status = body.results?.[0]?.status as "sellado" | "sin-cambios" | "espera" | "error" | undefined
+  return { ok: status !== "error", status }
 }
