@@ -8,7 +8,7 @@
 import assert from "node:assert/strict"
 import { before, describe, it } from "node:test"
 import {
-  UMBRA_ATTESTER_WALLET,
+  attesterWallet,
   fetchOnchainTx,
   type CertificateRecord,
   type OnchainAttestation,
@@ -134,8 +134,8 @@ describe("sellos de Trust Score en Solana", { skip }, () => {
     assert.deepEqual(failed, [])
   })
 
-  it("todos los registró la wallet oficial y el hash guardado = hash del snapshot", () => {
-    for (const r of rows) assert.equal(r.wallet, UMBRA_ATTESTER_WALLET)
+  it("todos los registró la wallet oficial de su red", () => {
+    for (const r of rows) assert.equal(r.wallet, attesterWallet(r.cluster))
   })
 
   it("un snapshot alterado NO verifica (detección de manipulación con datos reales)", async () => {
@@ -180,9 +180,10 @@ describe("sellos de certificados en Solana", { skip }, () => {
 
   it("la transacción la firmó la wallet oficial de Umbra", async () => {
     const c = certs.find((x) => x.onchain_signature)!
-    const tx = await fetchOnchainTx(c.onchain_signature!, "devnet")
+    const cluster = c.onchain_cluster ?? "devnet"
+    const tx = await fetchOnchainTx(c.onchain_signature!, cluster)
     assert.ok(tx, "no se pudo leer la tx")
-    assert.ok(tx.signers.includes(UMBRA_ATTESTER_WALLET))
+    assert.ok(tx.signers.includes(attesterWallet(cluster)))
   })
 
   it("un certificado alterado NO verifica", async () => {
@@ -267,5 +268,22 @@ describe("permisos de la base (anon)", { skip }, () => {
     const r = await rest<unknown[]>("internal_config?select=*")
     const leaked = Array.isArray(r.body) && r.body.length > 0
     assert.equal(leaked, false, "internal_config es legible por anon")
+  })
+})
+
+describe("salud del sitio en producción", { skip }, () => {
+  const SITE = process.env.UMBRA_SITE_URL ?? "https://umbra-agents.vercel.app"
+
+  it("/api/health: la llave secreta de Supabase funciona y la wallet responde", async (t) => {
+    const res = await fetch(`${SITE}/api/health`)
+    if (res.status === 404) return t.skip("ruta aún no desplegada")
+    const h = (await res.json()) as {
+      ok: boolean
+      supabaseSecretKey: string
+      solana: { cluster: "devnet" | "mainnet-beta"; wallet: string; balanceSol: number | null }
+    }
+    assert.equal(h.supabaseSecretKey, "ok")
+    assert.equal(h.solana.wallet, attesterWallet(h.solana.cluster))
+    assert.ok(h.solana.balanceSol !== null && h.solana.balanceSol > 0, "wallet sin saldo")
   })
 })

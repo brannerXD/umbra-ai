@@ -18,7 +18,7 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2"
 import { buildCertificatePayload, certMemo, sha256Hex } from "../_shared/umbra-attestation.ts"
-import { CLUSTER, CORS_HEADERS, isCron, json, loadSigner, sendMemo, type Signer } from "../_shared/solana-signer.ts"
+import { CORS_HEADERS, isCron, json, loadSigner, sendMemo, type Signer } from "../_shared/solana-signer.ts"
 
 const CRON_BATCH = 20
 /** Si otro proceso reclamó el certificado hace menos de esto, se espera. */
@@ -37,14 +37,25 @@ interface CertRow {
   issued_at: string
   cert_hash: string | null
   onchain_signature: string | null
+  onchain_cluster: string | null
 }
 
 const CERT_COLS =
-  "id, agent_id, agent_name, score, wins, comps_count, avg_score, format, issued_at, cert_hash, onchain_signature"
+  "id, agent_id, agent_name, score, wins, comps_count, avg_score, format, issued_at, cert_hash, onchain_signature, onchain_cluster"
 
 type Outcome =
-  | { status: "sellado" | "existente"; certId: string; hash: string; signature: string }
+  | { status: "sellado" | "existente"; certId: string; hash: string; signature: string; cluster: string }
   | { status: "pendiente" | "error"; certId: string; message?: string }
+
+function existing(c: CertRow): Outcome {
+  return {
+    status: "existente",
+    certId: c.id,
+    hash: c.cert_hash!,
+    signature: c.onchain_signature!,
+    cluster: c.onchain_cluster ?? "devnet",
+  }
+}
 
 function payloadOf(c: CertRow) {
   return buildCertificatePayload({
@@ -62,7 +73,11 @@ function payloadOf(c: CertRow) {
 
 async function anchor(supabase: SupabaseClient, signer: Signer, cert: CertRow): Promise<Outcome> {
   if (cert.onchain_signature && cert.cert_hash) {
-    return { status: "existente", certId: cert.id, hash: cert.cert_hash, signature: cert.onchain_signature }
+    return existing(cert)
+  }
+  if (signer.budget <= 0) {
+    // Tope por hora (mainnet) o reserva mínima: queda pendiente para el cron.
+    return { status: "pendiente", certId: cert.id, message: "Tope de sellos alcanzado; se sellará en breve." }
   }
 
   // Reclamo atómico: sólo un proceso publica la tx de este certificado.
@@ -80,9 +95,7 @@ async function anchor(supabase: SupabaseClient, signer: Signer, cert: CertRow): 
     for (let i = 0; i < 10; i++) {
       await new Promise((r) => setTimeout(r, 1000))
       const { data } = await supabase.from("certificate_issuances").select(CERT_COLS).eq("id", cert.id).maybeSingle()
-      if (data?.onchain_signature && data.cert_hash) {
-        return { status: "existente", certId: cert.id, hash: data.cert_hash, signature: data.onchain_signature }
-      }
+      if (data?.onchain_signature && data.cert_hash) return existing(data as CertRow)
     }
     return { status: "pendiente", certId: cert.id }
   }
@@ -97,13 +110,13 @@ async function anchor(supabase: SupabaseClient, signer: Signer, cert: CertRow): 
         cert_hash: hash,
         cert_snapshot: payload,
         onchain_signature: signature,
-        onchain_cluster: CLUSTER,
+        onchain_cluster: signer.cluster,
         onchain_wallet: signer.wallet,
         onchain_at: new Date().toISOString(),
       })
       .eq("id", cert.id)
     if (error) throw new Error(error.message)
-    return { status: "sellado", certId: cert.id, hash, signature }
+    return { status: "sellado", certId: cert.id, hash, signature, cluster: signer.cluster }
   } catch (e) {
     // Libera el reclamo para que el cron lo reintente.
     await supabase.from("certificate_issuances").update({ onchain_claimed_at: null }).eq("id", cert.id)
@@ -128,7 +141,7 @@ Deno.serve(async (req: Request) => {
       .order("issued_at", { ascending: true })
       .limit(CRON_BATCH)
     certs = (data ?? []) as CertRow[]
-    if (certs.length === 0) return json({ ok: true, cluster: CLUSTER, results: [] })
+    if (certs.length === 0) return json({ ok: true, results: [] })
   } else {
     let body: { certId?: unknown } = {}
     try {
@@ -142,13 +155,7 @@ Deno.serve(async (req: Request) => {
     if (!data) return json({ ok: false, message: "Certificado no encontrado." }, 404)
     const row = data as CertRow
     // Ya sellado: respuesta inmediata, sin tocar la wallet ni la red.
-    if (row.onchain_signature && row.cert_hash) {
-      return json({
-        ok: true,
-        cluster: CLUSTER,
-        results: [{ status: "existente", certId: row.id, hash: row.cert_hash, signature: row.onchain_signature }],
-      })
-    }
+    if (row.onchain_signature && row.cert_hash) return json({ ok: true, results: [existing(row)] })
     certs = [row]
   }
 
@@ -159,5 +166,5 @@ Deno.serve(async (req: Request) => {
   for (const cert of certs) results.push(await anchor(supabase, signer, cert))
 
   const ok = results.every((r) => r.status === "sellado" || r.status === "existente")
-  return json({ ok: cron ? true : ok, cluster: CLUSTER, wallet: signer.wallet, results })
+  return json({ ok: cron ? true : ok, cluster: signer.cluster, wallet: signer.wallet, results })
 })

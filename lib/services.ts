@@ -1565,12 +1565,14 @@ export async function findCertificate(query: string): Promise<CertificateRecord 
  */
 export async function anchorCertificate(
   certId: string,
-): Promise<{ hash: string; signature: string } | null> {
+): Promise<{ hash: string; signature: string; cluster: "devnet" | "mainnet-beta" } | null> {
   try {
     const { data } = await supabase.functions.invoke("attest-certificate", { body: { certId } })
-    const r = (data as { results?: { status: string; hash?: string; signature?: string }[] } | null)?.results?.[0]
+    const r = (
+      data as { results?: { status: string; hash?: string; signature?: string; cluster?: string }[] } | null
+    )?.results?.[0]
     if (r && (r.status === "sellado" || r.status === "existente") && r.hash && r.signature) {
-      return { hash: r.hash, signature: r.signature }
+      return { hash: r.hash, signature: r.signature, cluster: r.cluster === "mainnet-beta" ? "mainnet-beta" : "devnet" }
     }
   } catch (e) {
     console.error("anchorCertificate failed", e)

@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   // el QR lleva a /verificar, que siempre muestra el estado real.
   const anchored =
     issuance.onchainSignature && issuance.certHash
-      ? { hash: issuance.certHash, signature: issuance.onchainSignature }
+      ? { hash: issuance.certHash, signature: issuance.onchainSignature, cluster: issuance.onchainCluster }
       : await anchorCertificate(issuance.id)
 
   let qr: string | null = null
@@ -58,6 +58,7 @@ export async function GET(request: Request) {
   const seal: CertSeal = {
     hash: anchored?.hash ?? null,
     signature: anchored?.signature ?? null,
+    cluster: anchored?.cluster ?? null,
     qr,
   }
 

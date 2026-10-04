@@ -11,13 +11,16 @@ import { describe, it } from "node:test"
 import {
   MEMO_PROGRAM_ID,
   UMBRA_ATTESTER_WALLET,
+  ATTESTER_WALLETS,
   agentMemo,
+  attesterWallet,
   buildCertificatePayload,
   canonicalize,
   certMemo,
   fetchOnchainTx,
   hashCertificate,
   parseCertificateQuery,
+  rpcEndpoints,
   sha256Hex,
   verifyCertificate,
   verifyOnchain,
@@ -283,5 +286,51 @@ describe("parseCertificateQuery", () => {
     assert.equal(parseCertificateQuery(""), null)
     assert.equal(parseCertificateQuery(HASH.slice(0, 63)), null, "hash incompleto")
     assert.equal(parseCertificateQuery(HASH + "a"), null, "hash con un carácter de más")
+  })
+})
+
+// ── Dos redes: devnet y mainnet ────────────────────────────────────────────
+
+describe("redes (devnet / mainnet)", () => {
+  it("cada red tiene su propia wallet oficial", () => {
+    assert.equal(attesterWallet("devnet"), UMBRA_ATTESTER_WALLET)
+    assert.notEqual(attesterWallet("mainnet-beta"), attesterWallet("devnet"))
+    assert.equal(ATTESTER_WALLETS["mainnet-beta"], "6xBKjoTBabB5zrboXweLd6N14T87vcD5aq1mFxGTNutK")
+  })
+
+  it("en mainnet el navegador lee por PublicNode (el RPC oficial bloquea navegadores)", () => {
+    assert.equal(rpcEndpoints("mainnet-beta")[0], "https://solana-rpc.publicnode.com")
+    assert.ok(rpcEndpoints("mainnet-beta").includes("https://api.mainnet-beta.solana.com"))
+    assert.deepEqual(rpcEndpoints("devnet"), ["https://api.devnet.solana.com"])
+  })
+
+  it("rota de RPC en cada reintento", async () => {
+    const urls: string[] = []
+    const fetcher = (async (url: string) => {
+      urls.push(url)
+      return new Response("busy", { status: 429 })
+    }) as unknown as typeof fetch
+    await fetchOnchainTx("sig", "mainnet-beta", fetcher, 0)
+    assert.deepEqual(urls, [
+      "https://solana-rpc.publicnode.com",
+      "https://api.mainnet-beta.solana.com",
+      "https://solana-rpc.publicnode.com",
+    ])
+  })
+
+  it("un sello de mainnet firmado con la wallet de DEVNET no verifica", async () => {
+    const mainnetCert = { ...CERT, cluster: "mainnet-beta" as const }
+    const { fetcher } = fakeRpc([{ memo: certMemo(CERT.id, CERT.certHash!), signer: ATTESTER_WALLETS.devnet }])
+    const r = await verifyCertificate(mainnetCert, fetcher, 0)
+    assert.equal(r.result, "mismatch")
+    assert.equal(r.signerOk, false)
+  })
+
+  it("un sello de mainnet firmado con la wallet de mainnet verifica", async () => {
+    const mainnetCert = { ...CERT, cluster: "mainnet-beta" as const }
+    const { fetcher } = fakeRpc([
+      { memo: certMemo(CERT.id, CERT.certHash!), signer: ATTESTER_WALLETS["mainnet-beta"] },
+    ])
+    assert.equal((await verifyCertificate(mainnetCert, fetcher, 0)).result, "ok")
   })
 })

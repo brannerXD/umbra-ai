@@ -15,7 +15,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { agentMemo, buildAgentPayload, sha256Hex } from "../_shared/umbra-attestation.ts"
-import { CLUSTER, CORS_HEADERS, isCron, json, loadSigner, sendMemo } from "../_shared/solana-signer.ts"
+import { CORS_HEADERS, isCron, json, loadSigner, sendMemo } from "../_shared/solana-signer.ts"
 
 /** Máximo de agentes sellados por pasada del cron (cada uno es una tx). */
 const CRON_BATCH = 10
@@ -116,11 +116,19 @@ Deno.serve(async (req: Request) => {
 
   for (const agent of agents) {
     if (mode === "cron" && sealed >= CRON_BATCH) break
+    if (signer.budget <= 0) {
+      // Tope por hora (mainnet) o reserva mínima: el cron sigue la próxima hora.
+      results.push({ agentId: agent.id, status: "tope" })
+      break
+    }
 
+    // Último sello EN LA RED ACTIVA: al pasar de devnet a mainnet, cada agente
+    // se sella una vez en la red nueva.
     const { data: last } = await supabase
       .from("onchain_attestations")
       .select("snapshot, issued_at")
       .eq("agent_id", agent.id)
+      .eq("cluster", signer.cluster)
       .order("issued_at", { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -142,7 +150,7 @@ Deno.serve(async (req: Request) => {
       const signature = await sendMemo(signer, agentMemo(agent.id, hash))
       const { error } = await supabase.from("onchain_attestations").insert({
         agent_id: agent.id,
-        cluster: CLUSTER,
+        cluster: signer.cluster,
         payload_hash: hash,
         signature,
         wallet: signer.wallet,
@@ -158,5 +166,5 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  return json({ ok: true, cluster: CLUSTER, wallet: signer.wallet, sealed, results })
+  return json({ ok: true, cluster: signer.cluster, wallet: signer.wallet, sealed, results })
 })

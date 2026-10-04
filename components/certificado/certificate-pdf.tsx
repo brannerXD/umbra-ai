@@ -3,6 +3,7 @@ import { join } from "path"
 import { Circle, Document, Font, Image, Page, Polyline, StyleSheet, Svg, Text, View } from "@react-pdf/renderer"
 import type { Style } from "@react-pdf/types"
 import type { Agent, CertificateIssuance } from "@/lib/types"
+import { clusterLabel } from "@/lib/solana"
 import { SITE_HOST, formatFullDate, getCategoryLabel } from "@/lib/umbra"
 import type { Lang } from "@/lib/i18n"
 
@@ -211,7 +212,7 @@ const T = {
     chart: "Evolución del score",
     signature: "Firma digital · Autoridad verificadora de la red",
     certNo: "Certificado N.º",
-    sealed: "Sellado en Solana devnet",
+    sealed: "Sellado en",
     pending: "Sello en Solana en proceso — verifícalo en el enlace de abajo",
     scan: "Verificar",
     disclaimer:
@@ -227,7 +228,7 @@ const T = {
     chart: "Score evolution",
     signature: "Digital signature · Verifying authority of the network",
     certNo: "Certificate No.",
-    sealed: "Sealed on Solana devnet",
+    sealed: "Sealed on",
     pending: "Solana seal in progress — verify it at the link below",
     scan: "Verify",
     disclaimer:
@@ -247,6 +248,8 @@ interface CertificatePdfProps {
 export interface CertSeal {
   hash: string | null
   signature: string | null
+  /** Red de Solana donde quedó el sello. */
+  cluster: "devnet" | "mainnet-beta" | null
   /** QR (data URL PNG) que apunta a la página pública de verificación. */
   qr: string | null
 }
@@ -277,7 +280,7 @@ function SealLines({
         {s.certNo} {certId}
       </Text>
       {seal.hash && <Text style={style}>sha256 {seal.hash}</Text>}
-      <Text style={style}>{seal.signature ? s.sealed : s.pending}</Text>
+      <Text style={style}>{seal.signature ? `${s.sealed} ${clusterLabel(seal.cluster)}` : s.pending}</Text>
       {seal.signature && <Text style={style}>tx {seal.signature}</Text>}
     </View>
   )
