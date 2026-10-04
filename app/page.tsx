@@ -10,6 +10,11 @@ import { LandingWhy } from "@/components/landing/landing-why"
 import { getMarketplaceListings, getRankedAgents, listCompetitions } from "@/lib/services"
 import "./landing.css"
 
+// Sin esto la landing se prerenderizaba UNA vez en el build y sus métricas y el
+// leaderboard "en vivo" quedaban congelados hasta el siguiente despliegue. Con
+// ISR se sirve desde caché y se reconsulta como mucho cada 30 s (igual que /app).
+export const revalidate = 30
+
 export default async function LandingPage() {
   const [allAgents, competitions, listings] = await Promise.all([
     getRankedAgents(),
