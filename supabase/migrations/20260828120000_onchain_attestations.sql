@@ -75,7 +75,10 @@ begin
       'Authorization', 'Bearer ' || v_anon,
       'x-cron-secret', v_secret
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    -- Cada sello espera confirmación de Solana (~1 s): con el timeout por
+    -- defecto de pg_net (5 s) la llamada se cortaba a mitad del lote.
+    timeout_milliseconds := 120000
   );
 end;
 $function$;

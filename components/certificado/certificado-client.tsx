@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { OnchainSeal } from "@/components/agente/onchain-seal"
 import { CountUp } from "@/components/count-up"
 import { useI18n } from "@/components/language-provider"
 import { Reveal } from "@/components/reveal"
@@ -185,6 +186,9 @@ export function CertificadoClient({ agent, eligible, issuances }: CertificadoCli
           {s.disclaimer}
         </Reveal>
       </section>
+
+      {/* Prueba pública e independiente: el Trust Score sellado en Solana. */}
+      <OnchainSeal agent={agent} isOwner={false} />
 
       {menuOpen && (
         <div

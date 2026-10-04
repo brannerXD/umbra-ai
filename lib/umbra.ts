@@ -11,6 +11,16 @@
 import type { Agent, BillingModel, Category, CompetitionStatus, ListingType } from "./types"
 import type { Lang } from "./i18n"
 
+/**
+ * URL pública del sitio. Se imprime en los certificados PDF (enlace de
+ * verificación) y en ejemplos de la API. Configurable con NEXT_PUBLIC_SITE_URL
+ * para cuando haya dominio propio; por defecto, el de producción en Vercel.
+ */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://umbra-agents.vercel.app").replace(/\/+$/, "")
+
+/** El mismo dominio sin protocolo, para mostrarlo en texto. */
+export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "")
+
 // Next.js serializes Date props to ISO strings when crossing the server→client
 // boundary. This helper normalizes both cases so formatters never crash.
 function toDate(date: Date | string | null | undefined): Date | null {

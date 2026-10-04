@@ -164,26 +164,33 @@ export async function fetchOnchainMemo(
   signature: string,
   cluster: SolanaCluster = SOLANA_CLUSTER,
 ): Promise<string | null> {
-  try {
-    const res = await fetch(rpcEndpoint(cluster), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTransaction",
-        params: [signature, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    const ixs: { programId?: string; parsed?: unknown }[] =
-      data?.result?.transaction?.message?.instructions ?? []
-    const memoIx = ixs.find((ix) => ix.programId === MEMO_PROGRAM_ID)
-    return typeof memoIx?.parsed === "string" ? memoIx.parsed : null
-  } catch {
-    return null
+  // El RPC público limita ráfagas (429 o `result: null` transitorio): se
+  // reintenta un par de veces con espera creciente antes de rendirse.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1200 * attempt))
+    try {
+      const res = await fetch(rpcEndpoint(cluster), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTransaction",
+          params: [signature, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
+        }),
+      })
+      if (!res.ok) continue
+      const data = await res.json()
+      const ixs: { programId?: string; parsed?: unknown }[] | undefined =
+        data?.result?.transaction?.message?.instructions
+      if (!ixs) continue
+      const memoIx = ixs.find((ix) => ix.programId === MEMO_PROGRAM_ID)
+      return typeof memoIx?.parsed === "string" ? memoIx.parsed : null
+    } catch {
+      /* red caída: reintenta */
+    }
   }
+  return null
 }
 
 /**

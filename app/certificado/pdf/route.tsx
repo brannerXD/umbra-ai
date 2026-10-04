@@ -4,6 +4,7 @@ import { CertificateMobilePdf, CertificatePdf } from "@/components/certificado/c
 import {
   MIN_COMPS_FOR_CERTIFICATE,
   getAgentById,
+  getLatestAttestation,
   issueCertificate,
 } from "@/lib/services"
 import type { Lang } from "@/lib/i18n"
@@ -25,10 +26,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No se pudo emitir el certificado." }, { status: 500 })
   }
 
+  // Si el Trust Score está sellado en Solana, el PDF lleva la prueba on-chain.
+  const onchain = await getLatestAttestation(agent.id)
+
   const document = isMobile ? (
-    <CertificateMobilePdf agent={agent} issuance={issuance} lang={lang} />
+    <CertificateMobilePdf agent={agent} issuance={issuance} lang={lang} onchain={onchain} />
   ) : (
-    <CertificatePdf agent={agent} issuance={issuance} lang={lang} />
+    <CertificatePdf agent={agent} issuance={issuance} lang={lang} onchain={onchain} />
   )
   const buffer = await renderToBuffer(document)
 
