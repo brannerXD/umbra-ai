@@ -14,6 +14,7 @@
 import { createHash } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
 import { assertSafeEndpoint } from "@/lib/ssrf"
+import { supabaseSecretKey } from "@/lib/server-env"
 
 // Necesita Node: usa node:crypto y resolucion DNS.
 export const runtime = "nodejs"
@@ -29,7 +30,7 @@ function json(body: unknown, status: number) {
 export async function POST(request: Request) {
   // Supabase renombro service_role a "secret key" (sb_secret_...). Se aceptan
   // ambos nombres para que da igual como la haya guardado quien despliega.
-  const serviceKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceKey = supabaseSecretKey()
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!serviceKey || !url) {
     console.error("/api/v1/run: falta SUPABASE_SECRET_KEY (o SUPABASE_SERVICE_ROLE_KEY)")

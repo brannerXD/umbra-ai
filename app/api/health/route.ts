@@ -9,6 +9,7 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { ATTESTER_WALLETS, type SolanaCluster } from "@/lib/solana"
+import { supabaseSecretKey } from "@/lib/server-env"
 
 export const dynamic = "force-dynamic"
 
@@ -35,7 +36,7 @@ async function balanceOf(cluster: SolanaCluster, address: string): Promise<numbe
 
 export async function GET() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceKey = supabaseSecretKey()
 
   // 1. Llave secreta: sólo service_role puede leer internal_config.
   let serviceKeyStatus: "ok" | "invalida" | "falta" = "falta"

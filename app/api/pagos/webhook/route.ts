@@ -11,6 +11,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
 import { consultarPago, leerConfigPagos } from "@/lib/pagos"
+import { supabaseSecretKey } from "@/lib/server-env"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -52,7 +53,7 @@ function firmaValida(
 export async function POST(request: Request) {
   const cfg = leerConfigPagos()
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceKey = supabaseSecretKey()
   if (!cfg || !url || !serviceKey) {
     console.error("webhook: pagos o Supabase sin configurar")
     return new Response("no configurado", { status: 503 })
