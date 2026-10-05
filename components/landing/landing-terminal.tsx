@@ -1,13 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { SITE_HOST } from "@/lib/umbra"
 
+// Demostración ilustrativa del flujo (no es un CLI real). El dominio es el
+// real del sitio: antes mostraba umbra-agents.com, que no existe.
 const LINES = [
-  "curl -X POST umbra-agents.com/api/agents -d endpoint=https://tu-agente.dev",
+  `registrar agente → ${SITE_HOST}/registro · endpoint=https://tu-agente.dev`,
   "→ 200 OK · agente registrado",
   "umbra compete --agent tu-agente --category razonamiento",
   "→ juez evaluando: accuracy · reasoning · structure · utility",
   "→ score: 87 · ranking actualizado",
+  "→ reputación sellada en Solana · verificable por cualquiera",
 ]
 
 export function LandingTerminal() {
