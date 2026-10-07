@@ -8,8 +8,17 @@ import { useAuth } from "@/components/auth-provider"
 import { useI18n } from "@/components/language-provider"
 import { useToast } from "@/components/toast-provider"
 import { getCategoryLabel, formatListingPrice, getBillingLabel } from "@/lib/umbra"
-import { getAgentVersions, getCodeDownloadUrl, getPurchasedListingIds, iniciarCompra } from "@/lib/services"
+import {
+  getAgentVersions,
+  getCodeDownloadUrl,
+  getPurchasedListingIds,
+  iniciarCompra,
+  iniciarCompraSolana,
+  type PagoSolana,
+} from "@/lib/services"
+import { solanaPaymentsEnabled } from "@/lib/solana"
 import { safeExternalUrl } from "@/lib/utils"
+import { SolanaPayPanel } from "./solana-pay-panel"
 import type { AgentVersion, MarketplaceListingWithAgent, Agent } from "@/lib/types"
 
 type SortKey = "score-desc" | "price-asc" | "price-desc" | "recent"
@@ -108,6 +117,7 @@ const T = {
     // Avisos
     toastSignIn: "Inicia sesión primero para adquirir un agente.",
     toastFailed: "No se pudo completar. Intenta de nuevo.",
+    toastPaidUsdc: "Pago confirmado en Solana. Ya es tuyo.",
     toastBoughtCodeA: "Compraste el código de ",
     toastBoughtCodeB: ". Ya puedes descargarlo. (Cobro simulado.)",
     toastAccessA: "Acceso a ",
@@ -197,6 +207,7 @@ const T = {
     pConfirmAccess: "Confirm access",
     toastSignIn: "Sign in first to acquire an agent.",
     toastFailed: "Couldn't complete it. Please try again.",
+    toastPaidUsdc: "Payment confirmed on Solana. It's yours.",
     toastBoughtCodeA: "You bought the code for ",
     toastBoughtCodeB: ". You can download it now. (Simulated charge.)",
     toastAccessA: "Access to ",
@@ -223,6 +234,8 @@ export function MarketplaceClient({
   const [sort, setSort] = useState<SortKey>("score-desc")
   const [selected, setSelected] = useState<MarketplaceListingWithAgent | null>(null)
   const [processing, setProcessing] = useState(false)
+  // Pago en curso en USDC (Solana Pay): mientras exista, el modal muestra el QR.
+  const [pagoSolana, setPagoSolana] = useState<PagoSolana | null>(null)
   const [buyAccepted, setBuyAccepted] = useState(false)
   const [purchasedIds, setPurchasedIds] = useState<string[]>([])
   // Ficha pública "Ver detalles"
@@ -274,7 +287,16 @@ export function MarketplaceClient({
       return
     }
     setBuyAccepted(false)
+    setPagoSolana(null)
     setSelected(listing)
+  }
+
+  // El pago se confirmó en la cadena: el derecho de acceso/descarga ya existe.
+  function pagoConfirmado(listingId: string) {
+    setPurchasedIds((ids) => (ids.includes(listingId) ? ids : [...ids, listingId]))
+    setPagoSolana(null)
+    setSelected(null)
+    showToast(s.toastPaidUsdc, "success")
   }
 
   // Ficha pública: se puede ver todo (imagen, README, tecnologías, dependencias)
@@ -304,8 +326,23 @@ export function MarketplaceClient({
       const versions = await getAgentVersions(selected.listingId)
       versionId = versions[0]?.id ?? null
     }
-    // La compra la crea el SERVIDOR y solo se completa cuando la pasarela
-    // confirma el pago. Aqui solo se pide la URL y se envia al comprador.
+    // Los listados en dolares se pagan en USDC por Solana (si el riel esta
+    // activo); el resto, por Mercado Pago. En ambos la compra la crea el
+    // SERVIDOR y solo se completa cuando se confirma el pago de verdad.
+    if (solanaPaymentsEnabled() && ["USD", "USDC"].includes(selected.priceUnit.toUpperCase())) {
+      const r = await iniciarCompraSolana({ listingId: selected.listingId, versionId })
+      setProcessing(false)
+      if (!r.ok) {
+        showToast(r.message || s.toastFailed, "warn")
+      } else if (r.completada) {
+        pagoConfirmado(selected.listingId)
+      } else {
+        setPagoSolana(r.pago)
+      }
+      return
+    }
+
+    // Aqui solo se pide la URL de la pasarela y se envia al comprador.
     const res = await iniciarCompra({ listingId: selected.listingId, versionId })
     setProcessing(false)
     if (!res.ok) {
@@ -703,14 +740,25 @@ export function MarketplaceClient({
               </span>
             </label>
 
-            <div className="modal-actions">
-              <button className="btn-ghost" onClick={() => setSelected(null)} disabled={processing}>{s.pCancel}</button>
-              <button className="btn-primary" onClick={confirmPurchase} disabled={processing || !buyAccepted}>
-                <span>
-                  {processing ? s.pProcessing : selected.listingType === "codigo" ? s.pConfirmBuy : s.pConfirmAccess}
-                </span>
-              </button>
-            </div>
+            {pagoSolana ? (
+              <SolanaPayPanel
+                pago={pagoSolana}
+                onPaid={() => pagoConfirmado(selected.listingId)}
+                onClose={() => {
+                  setPagoSolana(null)
+                  setSelected(null)
+                }}
+              />
+            ) : (
+              <div className="modal-actions">
+                <button className="btn-ghost" onClick={() => setSelected(null)} disabled={processing}>{s.pCancel}</button>
+                <button className="btn-primary" onClick={confirmPurchase} disabled={processing || !buyAccepted}>
+                  <span>
+                    {processing ? s.pProcessing : selected.listingType === "codigo" ? s.pConfirmBuy : s.pConfirmAccess}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

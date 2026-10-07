@@ -842,9 +842,83 @@ export async function iniciarCompra(input: {
   }
 }
 
+/** Datos para pagar una compra en USDC por Solana (Solana Pay). */
+export interface PagoSolana {
+  compraId: string
+  /** URL `solana:` para abrir en la wallet o pintar como QR. */
+  url: string
+  destino: string
+  monto: string
+  token: string
+  referencia: string
+  cluster: "devnet" | "mainnet-beta"
+}
+
+/**
+ * Inicia el pago en USDC. Devuelve los datos para pagar, o `completada` si el
+ * pago ya estaba hecho (el servidor lo comprueba en la cadena antes de crear
+ * una referencia nueva).
+ */
+export async function iniciarCompraSolana(input: {
+  listingId: string
+  versionId?: string | null
+}): Promise<
+  | { ok: true; completada: false; pago: PagoSolana }
+  | { ok: true; completada: true }
+  | { ok: false; message: string; codigo?: string }
+> {
+  const { data: sesion } = await supabase.auth.getSession()
+  const token = sesion.session?.access_token
+  if (!token) return { ok: false, message: "Debes iniciar sesion para comprar." }
+
+  try {
+    const res = await fetch("/api/pagos/solana/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ listingId: input.listingId, versionId: input.versionId ?? null }),
+    })
+    const data = await res.json().catch(() => null)
+    if (res.ok && data?.estado === "completada") return { ok: true, completada: true }
+    if (!res.ok || !data?.url) {
+      return { ok: false, message: data?.error ?? "No se pudo iniciar el pago.", codigo: data?.codigo }
+    }
+    return { ok: true, completada: false, pago: data as PagoSolana }
+  } catch (e) {
+    console.error("iniciarCompraSolana fallo", e)
+    return { ok: false, message: "No se pudo contactar el servidor de pagos." }
+  }
+}
+
+/** Pregunta al servidor si el pago en USDC ya llegó (el servidor lo lee de la cadena). */
+export async function consultarPagoSolana(
+  compraId: string,
+): Promise<{ estado: "pendiente" | "completada" | "error"; message?: string }> {
+  const { data: sesion } = await supabase.auth.getSession()
+  const token = sesion.session?.access_token
+  if (!token) return { estado: "error", message: "Sesion expirada." }
+  try {
+    const res = await fetch(`/api/pagos/solana/estado?compraId=${encodeURIComponent(compraId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) return { estado: "error", message: data?.error ?? "No se pudo consultar el pago." }
+    return { estado: data?.estado === "completada" ? "completada" : "pendiente" }
+  } catch {
+    // Un corte de red momentáneo no es un fallo del pago: se vuelve a preguntar.
+    return { estado: "pendiente" }
+  }
+}
+
 // IDs de listados que este usuario ya compró (para mostrar la descarga).
+// Solo cuentan las COMPLETADAS: una compra pendiente (pago sin confirmar) no
+// da derecho a nada.
 export async function getPurchasedListingIds(buyerId: string): Promise<string[]> {
-  const { data, error } = await supabase.from("purchases").select("listing_id").eq("buyer_id", buyerId)
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("listing_id")
+    .eq("buyer_id", buyerId)
+    .eq("status", "completada")
   if (error || !data) return []
   return data.map((p) => p.listing_id as string)
 }

@@ -352,6 +352,56 @@
 .purchase-row.total span:first-child { color: var(--text); }
 .purchase-row.total span:last-child { color: var(--text); font-size: 1.05rem; }
 
+/* Pago en USDC (Solana Pay) */
+.solpay { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+.solpay-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+.solpay-hint, .solpay-note { font-size: 0.8rem; color: var(--text-3); line-height: 1.5; }
+.solpay-test {
+  border: 1px solid var(--border-2);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+.solpay-body { display: flex; gap: 20px; align-items: flex-start; }
+/* El QR va sobre blanco siempre: sobre fondo oscuro muchas cámaras no lo leen. */
+.solpay-qr { width: 224px; height: 224px; flex: none; background: #fff; border-radius: 8px; padding: 6px; }
+.solpay-qr-empty { background: var(--surface-2); border: 1px solid var(--border); }
+.solpay-data { display: flex; flex-direction: column; gap: 12px; min-width: 0; flex: 1; margin: 0; }
+.solpay-data dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+.solpay-data dd { margin: 2px 0 0; font-size: 0.9rem; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.solpay-data code { font-family: var(--font-mono); font-size: 0.82rem; }
+.solpay-copy {
+  background: none;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.solpay-copy:hover { color: var(--text); border-color: var(--text-3); }
+.solpay-open { display: inline-flex; text-decoration: none; }
+.solpay-status { font-size: 0.84rem; color: var(--text-2); }
+.solpay-status.esperando::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: solpay-pulse 1.4s ease-in-out infinite;
+}
+.solpay-status.error, .solpay-status.vencido { color: var(--text); }
+@keyframes solpay-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .solpay-status.esperando::before { animation: none; } }
+@media (max-width: 560px) {
+  .solpay-body { flex-direction: column; align-items: center; }
+  .solpay-data { width: 100%; }
+}
+
 .page-empty { text-align: center; padding: 60px 0; }
 .empty-title { color: var(--text-2); margin-bottom: 14px; }
 

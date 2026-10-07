@@ -100,3 +100,53 @@ restantes aproximados (además valida la llave secreta de Supabase).
 2. `update internal_config set value='mainnet-beta' where key='solana_cluster'`.
 3. El siguiente cron sella cada agente una vez en mainnet; los certificados
    nuevos se sellan en mainnet al emitirse.
+
+## Pagos en USDC (pasarela Solana Pay)
+
+Segundo riel de cobro, junto a Mercado Pago. Los listados en **USD** se pagan en
+**USDC** (1 USD = 1 USDC) por Solana; los listados en COP siguen por Mercado
+Pago (no se inventa ninguna tasa de cambio). El dinero va **directo a la
+tesorería**: Umbra no custodia fondos ni guarda ninguna llave para cobrar.
+
+**Flujo** (`lib/pagos-solana.ts`, `app/api/pagos/solana/*`,
+`components/marketplace/solana-pay-panel.tsx`):
+
+1. `POST /api/pagos/solana/checkout` (con la sesión del comprador) crea la
+   compra en `pendiente` con una **referencia** única (clave pública aleatoria)
+   y devuelve la URL `solana:` (QR / enlace a la wallet), monto y destino.
+2. El comprador paga desde su wallet. La referencia viaja en la transferencia.
+3. `GET /api/pagos/solana/estado?compraId=…` (sondeo cada 4 s) busca en la
+   cadena las transacciones que nombran la referencia y acepta una sola si:
+   terminó sin error, nombra la referencia y a la tesorería **le llegó al menos
+   el monto exacto** del mint configurado (se mide con el cambio de saldo de la
+   propia transacción). Sólo entonces la compra pasa a `completada`.
+4. La firma se guarda en `provider_payment_id` con índice único
+   (`purchases_solana_signature_uidx`): una transacción no paga dos compras.
+
+La descarga del código ya exigía `status='completada'` en las políticas del
+bucket, así que una compra pendiente no desbloquea nada.
+
+**Pruebas:** `npm test` (unitarias, incluida una transacción REAL de devnet
+guardada como fixture) y, además, se probó contra devnet de verdad con token,
+tesorería y comprador desechables: pago real de 5 USDC identificado entre un
+señuelo de 1 USDC con la misma referencia; monto mayor al pagado, otra
+referencia, otra tesorería u otro mint → siguen en "pendiente".
+
+**Apagado por defecto.** Para activarlo en producción (decisión de quien recibe
+el dinero):
+
+1. Elegir la **wallet de tesorería** (dirección pública; la llave la conserva
+   quien cobra, nunca entra al proyecto). Debe tener creada la cuenta de USDC
+   (basta con recibir una vez 1 USDC, o crearla desde su wallet).
+2. Variables en Vercel (Production):
+   - `NEXT_PUBLIC_SOLANA_PAYMENTS=true`
+   - `NEXT_PUBLIC_SOLANA_TREASURY=<dirección de la tesorería>`
+   - `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta`
+   - (opcional) `SOLANA_RPC_URL=<RPC propio>`: los RPC públicos limitan ráfagas.
+   - (opcional) `SOLANA_PAY_COMMITMENT=confirmed` para confirmar en ~1 s en vez
+     de ~15 s (`finalized`, el valor por defecto, es el más seguro).
+3. Redeploy. Probar con un listado de 0,01 USD antes de abrirlo.
+
+Para ensayar sin dinero real: `NEXT_PUBLIC_SOLANA_CLUSTER=devnet` y
+`NEXT_PUBLIC_SOLANA_PAY_TOKEN=<mint de prueba>` (por defecto usa el USDC de
+devnet).
