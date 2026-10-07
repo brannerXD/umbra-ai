@@ -735,14 +735,35 @@ Deno.serve(async (req: Request) => {
     const judge = getJudge(comp.category)
 
     // Nadie respondió: casi siempre es un problema de la plataforma (llaves,
-    // proveedor caído), no de los agentes. Se cierra sin ganador y SIN tocar
-    // las estadísticas, para no castigar a nadie por un fallo ajeno.
+    // cuota o proveedor caído), no de los agentes, y suele ser pasajero. Se
+    // re-programa (como cuando falla el juez) y sólo tras agotar los intentos
+    // se cierra sin ganador y SIN tocar las estadísticas, para no castigar a
+    // nadie por un fallo ajeno.
     if (responded.length === 0) {
+      const attempts = (comp.judge_attempts ?? 0) + 1
+      if (attempts < MAX_JUDGE_ATTEMPTS) {
+        await supabase
+          .from("competitions")
+          .update({
+            status: "proxima",
+            judge_attempts: attempts,
+            scheduled_at: new Date(Date.now() + JUDGE_RETRY_DELAY_MIN * 60 * 1000).toISOString(),
+          })
+          .eq("id", competitionId)
+        return jsonRes({ ok: false, retry: true, attempts, message: "Ningún agente respondió; reintento programado." }, 503)
+      }
       await supabase
         .from("competitions")
-        .update({ status: "completada", evaluator: judge.name, winner_id: null, winner_score: null, ends_at: new Date().toISOString() })
+        .update({
+          status: "completada",
+          judge_attempts: attempts,
+          evaluator: judge.name,
+          winner_id: null,
+          winner_score: null,
+          ends_at: new Date().toISOString(),
+        })
         .eq("id", competitionId)
-      return jsonRes({ ok: true, winnerId: null, message: "Ningún agente respondió." })
+      return jsonRes({ ok: false, winnerId: null, message: "Ningún agente respondió tras varios intentos." }, 503)
     }
 
     // 3. Evaluar con la cadena de jueces.
