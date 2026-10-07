@@ -92,34 +92,44 @@ export async function POST(request: Request) {
     )
   }
 
-  // No cobrar dos veces lo mismo.
-  const { data: yaComprada } = await admin
+  // No cobrar dos veces lo mismo. La tabla admite UNA compra por comprador y
+  // listado: si quedo una pendiente de un intento abandonado, se reutiliza en
+  // vez de chocar con la restriccion unica y dejar al comprador sin poder pagar.
+  const { data: previa } = await admin
     .from("purchases")
     .select("id, status")
     .eq("listing_id", listingId)
     .eq("buyer_id", comprador.id)
-    .eq("status", "completada")
     .maybeSingle()
-  if (yaComprada) {
+  if (previa?.status === "completada") {
     return json({ error: "Ya compraste este agente.", codigo: "ya_comprada" }, 409)
   }
 
   // ── 3. Compra en pendiente ────────────────────────────────────────────────
-  const { data: compra, error: compraErr } = await admin
-    .from("purchases")
-    .insert({
-      listing_id: listingId,
-      buyer_id: comprador.id,
-      price: precio,
-      price_unit: MONEDA,
-      version_id: versionId,
-      status: "pendiente",
-      provider: "mercadopago",
-      amount_cents: aCentavos(precio),
-      currency: MONEDA,
-    })
-    .select("id")
-    .single()
+  const campos = {
+    price: precio,
+    price_unit: MONEDA,
+    version_id: versionId,
+    status: "pendiente",
+    provider: "mercadopago",
+    provider_reference: null,
+    provider_payment_id: null,
+    amount_cents: aCentavos(precio),
+    currency: MONEDA,
+  }
+  const { data: compra, error: compraErr } = previa
+    ? await admin
+        .from("purchases")
+        .update(campos)
+        .eq("id", previa.id)
+        .neq("status", "completada")
+        .select("id")
+        .single()
+    : await admin
+        .from("purchases")
+        .insert({ listing_id: listingId, buyer_id: comprador.id, ...campos })
+        .select("id")
+        .single()
 
   if (compraErr || !compra) {
     console.error("checkout: no se pudo crear la compra", compraErr)
@@ -168,8 +178,9 @@ export async function POST(request: Request) {
     const pref = await res.json()
     if (!res.ok || !pref?.init_point) {
       console.error("checkout: MP rechazo la preferencia", res.status, pref?.message)
-      // La compra pendiente queda huerfana: se marca para no ensuciar el panel.
-      await admin.from("purchases").delete().eq("id", compra.id)
+      // La compra pendiente queda huerfana: se borra para no ensuciar el panel
+      // (solo si es nueva; una reutilizada puede tener ya un pago en otro riel).
+      if (!previa) await admin.from("purchases").delete().eq("id", compra.id)
       return json({ error: "No se pudo crear el pago. Intenta de nuevo." }, 502)
     }
 
@@ -181,7 +192,7 @@ export async function POST(request: Request) {
     return json({ url: pref.init_point, compraId: compra.id }, 200)
   } catch (e) {
     console.error("checkout: fallo al contactar MP", e)
-    await admin.from("purchases").delete().eq("id", compra.id)
+    if (!previa) await admin.from("purchases").delete().eq("id", compra.id)
     return json({ error: "No se pudo contactar la pasarela de pagos." }, 502)
   }
 }
